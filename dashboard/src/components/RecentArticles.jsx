@@ -1,4 +1,5 @@
 import React from 'react'
+import { FiFileText, FiCalendar, FiExternalLink } from 'react-icons/fi'
 
 export default function RecentArticles({ data, isLoading, selectedAuthor, onClearAuthorFilter }) {
   const formatDate = (timestamp) => {
@@ -25,14 +26,14 @@ export default function RecentArticles({ data, isLoading, selectedAuthor, onClea
   return (
     <div className="card">
       <div className="recent-articles-header">
-        <h3 className="chart-title">📰 Recent Articles</h3>
+        <h3 className="chart-title"><FiFileText style={{display: 'inline', marginRight: '8px'}} /> Recent Articles</h3>
         {selectedAuthor && (
           <div className="articles-filter-info">
-            <span className="filter-tag">
-              Author: <strong>{selectedAuthor.name}</strong>
+            <span className="filter-tag" style={{display: 'flex', alignItems: 'center', gap: '4px'}}>
+              <FiCalendar /> Author: <strong>{selectedAuthor.name}</strong>
             </span>
             <button className="clear-filter-btn" onClick={onClearAuthorFilter}>
-              ✕
+              <FiX style={{fontSize: '1.2rem'}} />
             </button>
           </div>
         )}
@@ -53,8 +54,8 @@ export default function RecentArticles({ data, isLoading, selectedAuthor, onClea
                 {article.headline || 'Untitled'}
               </div>
               <div className="article-meta">
-                <span>📅 {formatDate(article.created_ts)}</span>
-                {article.author && <span>✍️ {article.author}</span>}
+                <span><FiCalendar style={{display: 'inline', marginRight: '4px'}} />{formatDate(article.created_ts)}</span>
+                {article.author && <span><FiCalendar style={{display: 'inline', marginRight: '4px'}} />{article.author}</span>}
               </div>
               {article.post_url && (
                 <a
@@ -63,7 +64,7 @@ export default function RecentArticles({ data, isLoading, selectedAuthor, onClea
                   rel="noopener noreferrer"
                   className="article-link"
                 >
-                  View Article →
+                  <FiExternalLink style={{display: 'inline', marginRight: '4px'}} />View Article
                 </a>
               )}
             </div>

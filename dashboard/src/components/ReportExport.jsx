@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { FiDownload, FiAlertCircle, FiLock } from 'react-icons/fi'
 import { getStats, getPostsPerDay, getTopAuthors, getRecentArticles, getWebsites } from '../api'
 import { 
   exportToCSV, 
@@ -67,7 +68,7 @@ function ReportExport({ websites, dateRange, selectedWebsite }) {
       setTimeout(() => setMessage(''), 3000)
     } catch (error) {
       console.error('Export error:', error)
-      setMessage('✗ Error exporting data')
+      setMessage('❌ Error exporting data')
     } finally {
       setExporting(false)
     }
@@ -91,7 +92,7 @@ function ReportExport({ websites, dateRange, selectedWebsite }) {
   return (
     <div className="report-export-container">
       <div className="report-header">
-        <h2>📊 Export Report</h2>
+        <h2><FiDownload style={{display: 'inline', marginRight: '8px'}} /> Export Report</h2>
         <p>Download analytics data in CSV format</p>
       </div>
 
@@ -148,13 +149,18 @@ function ReportExport({ websites, dateRange, selectedWebsite }) {
           onClick={handleExport}
           disabled={exporting}
         >
-          {exporting ? '⏳ Exporting...' : '📥 Download CSV'}
+          {exporting ? (
+            <><FiAlertCircle style={{display: 'inline', marginRight: '6px'}} /> Exporting...</>
+          ) : (
+            <><FiDownload style={{display: 'inline', marginRight: '6px'}} /> Download CSV</>
+          )}
         </button>
-        {message && <span className={`export-message ${message.startsWith('✓') ? 'success' : 'error'}`}>{message}</span>}
+        {message && <span className={`export-message ${message.startsWith('✓') || !message.startsWith('❌') ? 'success' : 'error'}`}>{message}</span>}
       </div>
 
       <div className="report-info">
         <p>
+          <FiAlertCircle style={{display: 'inline', marginRight: '8px', verticalAlign: 'middle'}} />
           <strong>About this export:</strong> The CSV file will contain unformatted data for all selected filters.
           Includes timestamps, URLs, IDs, and other metrics for analysis.
         </p>

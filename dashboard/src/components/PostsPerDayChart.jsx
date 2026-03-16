@@ -1,4 +1,5 @@
 import React from 'react'
+import { FiBarChart2 } from 'react-icons/fi'
 import {
   BarChart,
   Bar,
@@ -15,7 +16,7 @@ export default function PostsPerDayChart({ data, isLoading }) {
 
   return (
     <div className="card chart-card">
-      <h3 className="chart-title">📊 Posts Published Per Day</h3>
+      <h3 className="chart-title"><FiBarChart2 style={{display: 'inline', marginRight: '8px'}} /> Posts Published Per Day</h3>
       {isLoading ? (
         <div className="spinner">Loading chart data...</div>
       ) : chartData.length === 0 ? (
