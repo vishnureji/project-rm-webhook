@@ -92,7 +92,8 @@ def get_website_info(post_url, website_id_from_payload=None, website_name_from_p
     return "default", "Unknown Website"
 
 
-def authenticate(credentials: HTTPBasicCredentials = Depends(security)):
+def upsert_to_master(data):
+    """Insert/update article and author data into database"""
     conn = None
     cur = None
     try:
