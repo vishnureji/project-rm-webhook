@@ -8,14 +8,22 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
+  Cell,
 } from 'recharts'
 
-export default function TopAuthorsChart({ data, isLoading }) {
+export default function TopAuthorsChart({ data, isLoading, selectedAuthorId, onAuthorSelect }) {
   const chartData = (data || []).map((author) => ({
     name: author.name || 'Unknown',
     posts: author.post_count,
     author_id: author.author_id,
   }))
+
+  const handleBarClick = (data) => {
+    onAuthorSelect({
+      author_id: data.author_id,
+      name: data.name
+    })
+  }
 
   return (
     <div className="card chart-card">
@@ -45,7 +53,20 @@ export default function TopAuthorsChart({ data, isLoading }) {
               }}
             />
             <Legend />
-            <Bar dataKey="posts" fill="#764ba2" name="Published Posts" />
+            <Bar 
+              dataKey="posts" 
+              name="Published Posts"
+              onClick={(data) => handleBarClick(data)}
+              style={{ cursor: 'pointer' }}
+            >
+              {chartData.map((entry) => (
+                <Cell
+                  key={`cell-${entry.author_id}`}
+                  fill={selectedAuthorId === entry.author_id ? '#1f73e6' : '#764ba2'}
+                  style={{ cursor: 'pointer' }}
+                />
+              ))}
+            </Bar>
           </BarChart>
         </ResponsiveContainer>
       )}

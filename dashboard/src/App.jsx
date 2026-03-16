@@ -11,6 +11,7 @@ import { getStats, getPostsPerDay, getTopAuthors, getRecentArticles, getWebsites
 
 function App() {
   const [selectedWebsite, setSelectedWebsite] = useState(null)
+  const [selectedAuthor, setSelectedAuthor] = useState(null)
   const [websites, setWebsites] = useState(null)
   const [dateRange, setDateRange] = useState({
     preset: '30days',
@@ -136,6 +137,8 @@ function App() {
         <TopAuthorsChart
           data={topAuthors}
           isLoading={loading.topAuthors}
+          selectedAuthorId={selectedAuthor?.author_id}
+          onAuthorSelect={setSelectedAuthor}
         />
       </div>
 
@@ -144,6 +147,8 @@ function App() {
           <TopAuthorsGrid
             data={topAuthors}
             isLoading={loading.topAuthors}
+            selectedAuthorId={selectedAuthor?.author_id}
+            onAuthorSelect={setSelectedAuthor}
           />
         </div>
       </div>
@@ -153,6 +158,8 @@ function App() {
           <RecentArticles
             data={recentArticles}
             isLoading={loading.recentArticles}
+            selectedAuthor={selectedAuthor}
+            onClearAuthorFilter={() => setSelectedAuthor(null)}
           />
         </div>
       </div>

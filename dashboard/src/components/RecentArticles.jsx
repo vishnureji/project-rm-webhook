@@ -1,6 +1,6 @@
 import React from 'react'
 
-export default function RecentArticles({ data, isLoading }) {
+export default function RecentArticles({ data, isLoading, selectedAuthor, onClearAuthorFilter }) {
   const formatDate = (timestamp) => {
     if (!timestamp) return 'N/A'
     try {
@@ -17,16 +17,37 @@ export default function RecentArticles({ data, isLoading }) {
     }
   }
 
+  // Filter articles by selected author
+  const filteredData = selectedAuthor
+    ? (data || []).filter((article) => article.author === selectedAuthor.name)
+    : data
+
   return (
     <div className="card">
-      <h3 className="chart-title">📰 Recent Articles</h3>
+      <div className="recent-articles-header">
+        <h3 className="chart-title">📰 Recent Articles</h3>
+        {selectedAuthor && (
+          <div className="articles-filter-info">
+            <span className="filter-tag">
+              Author: <strong>{selectedAuthor.name}</strong>
+            </span>
+            <button className="clear-filter-btn" onClick={onClearAuthorFilter}>
+              ✕
+            </button>
+          </div>
+        )}
+      </div>
       {isLoading ? (
         <div className="spinner">Loading articles...</div>
-      ) : !data || data.length === 0 ? (
-        <div className="spinner">No articles available</div>
+      ) : !filteredData || filteredData.length === 0 ? (
+        <div className="spinner">
+          {selectedAuthor
+            ? `No articles by ${selectedAuthor.name}`
+            : 'No articles available'}
+        </div>
       ) : (
         <div className="articles-list">
-          {data.slice(0, 10).map((article) => (
+          {filteredData.slice(0, 10).map((article) => (
             <div key={article.post_id} className="article-item">
               <div className="article-headline">
                 {article.headline || 'Untitled'}

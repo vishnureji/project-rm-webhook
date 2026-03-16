@@ -1,6 +1,6 @@
 import React from 'react'
 
-export default function TopAuthorsGrid({ data, isLoading }) {
+export default function TopAuthorsGrid({ data, isLoading, selectedAuthorId, onAuthorSelect }) {
   return (
     <div className="card">
       <h3 className="chart-title">👥 Top Authors</h3>
@@ -11,7 +11,15 @@ export default function TopAuthorsGrid({ data, isLoading }) {
       ) : (
         <div className="authors-grid">
           {data.slice(0, 8).map((author) => (
-            <div key={author.author_id} className="author-card">
+            <div
+              key={author.author_id}
+              className={`author-card ${selectedAuthorId === author.author_id ? 'selected' : ''}`}
+              onClick={() => onAuthorSelect({
+                author_id: author.author_id,
+                name: author.name
+              })}
+              style={{ cursor: 'pointer' }}
+            >
               {author.photo && (
                 <img
                   src={author.photo}

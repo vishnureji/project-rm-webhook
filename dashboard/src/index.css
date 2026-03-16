@@ -322,6 +322,14 @@ body {
   transform: translateY(-2px);
 }
 
+.author-card.selected {
+  background: #e8f0fe;
+  border-color: #1f73e6;
+  border-width: 2px;
+  box-shadow: 0 4px 12px rgba(31, 115, 230, 0.25);
+  transform: translateY(-4px);
+}
+
 .author-avatar {
   width: 48px;
   height: 48px;
@@ -373,6 +381,52 @@ body {
   background: white;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   border-color: #bdc1c6;
+}
+
+.recent-articles-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.articles-filter-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: #e8f0fe;
+  border: 1px solid #1f73e6;
+  border-radius: 4px;
+}
+
+.filter-tag {
+  font-size: 0.85rem;
+  color: #1765d0;
+  font-weight: 500;
+}
+
+.filter-tag strong {
+  font-weight: 600;
+  color: #1f73e6;
+}
+
+.clear-filter-btn {
+  padding: 2px 8px;
+  background: transparent;
+  border: none;
+  color: #1f73e6;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-radius: 3px;
+}
+
+.clear-filter-btn:hover {
+  background: rgba(31, 115, 230, 0.1);
+  color: #1765d0;
 }
 
 .article-headline {
