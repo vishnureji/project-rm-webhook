@@ -427,3 +427,169 @@ body {
   color: #5f6368;
   font-size: 0.85rem;
 }
+
+/* Report Export Styles */
+.report-export-container {
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #dadce0;
+  padding: 24px;
+}
+
+.report-header {
+  margin-bottom: 20px;
+  border-bottom: 1px solid #dadce0;
+  padding-bottom: 16px;
+}
+
+.report-header h2 {
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: #202124;
+  margin-bottom: 4px;
+}
+
+.report-header p {
+  font-size: 0.9rem;
+  color: #5f6368;
+}
+
+.report-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 6px;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.filter-group label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #202124;
+}
+
+.filter-group select {
+  padding: 8px 10px;
+  border: 1px solid #dadce0;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  color: #202124;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.filter-group select:hover:not(:disabled) {
+  border-color: #bdc1c6;
+  background: #fafbfc;
+}
+
+.filter-group select:focus {
+  outline: none;
+  border-color: #1f73e6;
+  box-shadow: 0 0 0 2px rgba(31, 115, 230, 0.15);
+}
+
+.filter-group select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background: #f8f9fa;
+}
+
+.filter-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+}
+
+.filter-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #202124;
+  white-space: nowrap;
+}
+
+.filter-value {
+  font-size: 0.85rem;
+  color: #5f6368;
+  padding: 4px 8px;
+  background: white;
+  border-radius: 3px;
+  border: 1px solid #dadce0;
+}
+
+.report-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.export-btn {
+  padding: 10px 16px;
+  background: #1f73e6;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.export-btn:hover:not(:disabled) {
+  background: #1765d0;
+  box-shadow: 0 2px 8px rgba(31, 115, 230, 0.3);
+}
+
+.export-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.export-message {
+  font-size: 0.85rem;
+  padding: 6px 10px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.export-message.success {
+  background: #e6f4ea;
+  color: #137333;
+  border: 1px solid #b3dfc5;
+}
+
+.export-message.error {
+  background: #fce8e6;
+  color: #c5221f;
+  border: 1px solid #f4d2ce;
+}
+
+.report-info {
+  padding: 12px;
+  background: #e8f0fe;
+  border-left: 3px solid #1f73e6;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  color: #1765d0;
+}
+
+.report-info p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.report-info strong {
+  font-weight: 600;
+}

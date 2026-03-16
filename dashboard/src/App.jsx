@@ -6,6 +6,7 @@ import TopAuthorsGrid from './components/TopAuthorsGrid'
 import RecentArticles from './components/RecentArticles'
 import WebsiteSelector from './components/WebsiteSelector'
 import DateRangeSelector from './components/DateRangeSelector'
+import ReportExport from './components/ReportExport'
 import { getStats, getPostsPerDay, getTopAuthors, getRecentArticles, getWebsites } from './api'
 
 function App() {
@@ -152,6 +153,16 @@ function App() {
           <RecentArticles
             data={recentArticles}
             isLoading={loading.recentArticles}
+          />
+        </div>
+      </div>
+
+      <div className="dashboard-grid">
+        <div style={{ gridColumn: 'span 1' }}>
+          <ReportExport
+            websites={websites}
+            dateRange={dateRange}
+            selectedWebsite={selectedWebsite}
           />
         </div>
       </div>
