@@ -1,6 +1,7 @@
 import React from 'react'
 import { FiFileText, FiCalendar, FiExternalLink } from 'react-icons/fi'
 import { MdClose } from 'react-icons/md'
+import { UserPen } from 'lucide-react'
 
 export default function RecentArticles({ data, isLoading, selectedAuthor, onClearAuthorFilter }) {
   const formatDate = (timestamp) => {
@@ -31,7 +32,7 @@ export default function RecentArticles({ data, isLoading, selectedAuthor, onClea
         {selectedAuthor && (
           <div className="articles-filter-info">
             <span className="filter-tag" style={{display: 'flex', alignItems: 'center', gap: '4px'}}>
-              <FiCalendar /> Author: <strong>{selectedAuthor.name}</strong>
+              <UserPen style={{width: '16px', height: '16px'}} /> Author: <strong>{selectedAuthor.name}</strong>
             </span>
             <button className="clear-filter-btn" onClick={onClearAuthorFilter}>
               <MdClose style={{fontSize: '1.2rem'}} />

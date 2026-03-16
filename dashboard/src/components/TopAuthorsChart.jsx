@@ -1,5 +1,5 @@
 import React from 'react'
-import { FiBarChart2 } from 'react-icons/fi'
+import { UserPen } from 'lucide-react'
 import {
   BarChart,
   Bar,
@@ -28,7 +28,7 @@ export default function TopAuthorsChart({ data, isLoading, selectedAuthorId, onA
 
   return (
     <div className="card chart-card">
-      <h3 className="chart-title"><FiBarChart2 style={{display: 'inline', marginRight: '8px'}} /> Top Authors by Posts</h3>
+      <h3 className="chart-title"><UserPen style={{display: 'inline', marginRight: '8px', width: '20px', height: '20px'}} /> Top Authors by Posts</h3>
       {isLoading ? (
         <div className="spinner">Loading chart data...</div>
       ) : chartData.length === 0 ? (

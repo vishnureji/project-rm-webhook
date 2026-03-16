@@ -1,10 +1,10 @@
 import React from 'react'
-import { FiUsers } from 'react-icons/fi'
+import { UserPen } from 'lucide-react'
 
 export default function TopAuthorsGrid({ data, isLoading, selectedAuthorId, onAuthorSelect }) {
   return (
     <div className="card">
-      <h3 className="chart-title"><FiUsers style={{display: 'inline', marginRight: '8px'}} /> Top Authors</h3>
+      <h3 className="chart-title"><UserPen style={{display: 'inline', marginRight: '8px', width: '20px', height: '20px'}} /> Top Authors</h3>
       {isLoading ? (
         <div className="spinner">Loading authors...</div>
       ) : !data || data.length === 0 ? (
