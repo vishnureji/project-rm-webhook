@@ -4,14 +4,18 @@ import PostsPerDayChart from './components/PostsPerDayChart'
 import TopAuthorsChart from './components/TopAuthorsChart'
 import TopAuthorsGrid from './components/TopAuthorsGrid'
 import RecentArticles from './components/RecentArticles'
-import { getStats, getPostsPerDay, getTopAuthors, getRecentArticles } from './api'
+import WebsiteSelector from './components/WebsiteSelector'
+import { getStats, getPostsPerDay, getTopAuthors, getRecentArticles, getWebsites } from './api'
 
 function App() {
+  const [selectedWebsite, setSelectedWebsite] = useState(null)
+  const [websites, setWebsites] = useState(null)
   const [stats, setStats] = useState(null)
   const [postsPerDay, setPostsPerDay] = useState(null)
   const [topAuthors, setTopAuthors] = useState(null)
   const [recentArticles, setRecentArticles] = useState(null)
   const [loading, setLoading] = useState({
+    websites: true,
     stats: true,
     postsPerDay: true,
     topAuthors: true,
@@ -23,25 +27,33 @@ function App() {
     loadDashboardData()
     const interval = setInterval(loadDashboardData, 30000)
     return () => clearInterval(interval)
-  }, [])
+  }, [selectedWebsite])
 
   const loadDashboardData = async () => {
     try {
       setError(null)
 
-      const statsData = await getStats()
+      // Load websites first if not already loaded
+      if (!websites) {
+        const websitesData = await getWebsites()
+        setWebsites(websitesData)
+        setLoading((prev) => ({ ...prev, websites: false }))
+      }
+
+      // Load data for selected website
+      const statsData = await getStats(selectedWebsite)
       setStats(statsData)
       setLoading((prev) => ({ ...prev, stats: false }))
 
-      const postsData = await getPostsPerDay()
+      const postsData = await getPostsPerDay(selectedWebsite)
       setPostsPerDay(postsData)
       setLoading((prev) => ({ ...prev, postsPerDay: false }))
 
-      const authorsData = await getTopAuthors()
+      const authorsData = await getTopAuthors(selectedWebsite)
       setTopAuthors(authorsData)
       setLoading((prev) => ({ ...prev, topAuthors: false }))
 
-      const articlesData = await getRecentArticles(20)
+      const articlesData = await getRecentArticles(20, selectedWebsite)
       setRecentArticles(articlesData)
       setLoading((prev) => ({ ...prev, recentArticles: false }))
     } catch (err) {
@@ -50,6 +62,7 @@ function App() {
         'Failed to load dashboard data. Make sure the webhook server is running on http://localhost:8000'
       )
       setLoading({
+        websites: false,
         stats: false,
         postsPerDay: false,
         topAuthors: false,
@@ -70,6 +83,13 @@ function App() {
           <strong>⚠️ Error:</strong> {error}
         </div>
       )}
+
+      <WebsiteSelector
+        websites={websites}
+        selectedWebsite={selectedWebsite}
+        onSelect={setSelectedWebsite}
+        isLoading={loading.websites}
+      />
 
       <div className="dashboard-grid">
         <StatsCard
