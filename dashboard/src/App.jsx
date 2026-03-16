@@ -5,11 +5,17 @@ import TopAuthorsChart from './components/TopAuthorsChart'
 import TopAuthorsGrid from './components/TopAuthorsGrid'
 import RecentArticles from './components/RecentArticles'
 import WebsiteSelector from './components/WebsiteSelector'
+import DateRangeSelector from './components/DateRangeSelector'
 import { getStats, getPostsPerDay, getTopAuthors, getRecentArticles, getWebsites } from './api'
 
 function App() {
   const [selectedWebsite, setSelectedWebsite] = useState(null)
   const [websites, setWebsites] = useState(null)
+  const [dateRange, setDateRange] = useState({
+    preset: '30days',
+    startDate: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0],
+    endDate: new Date().toISOString().split('T')[0],
+  })
   const [stats, setStats] = useState(null)
   const [postsPerDay, setPostsPerDay] = useState(null)
   const [topAuthors, setTopAuthors] = useState(null)
@@ -27,7 +33,7 @@ function App() {
     loadDashboardData()
     const interval = setInterval(loadDashboardData, 30000)
     return () => clearInterval(interval)
-  }, [selectedWebsite])
+  }, [selectedWebsite, dateRange])
 
   const loadDashboardData = async () => {
     try {
@@ -40,20 +46,20 @@ function App() {
         setLoading((prev) => ({ ...prev, websites: false }))
       }
 
-      // Load data for selected website
-      const statsData = await getStats(selectedWebsite)
+      // Load data for selected website with date range
+      const statsData = await getStats(selectedWebsite, dateRange.startDate, dateRange.endDate)
       setStats(statsData)
       setLoading((prev) => ({ ...prev, stats: false }))
 
-      const postsData = await getPostsPerDay(selectedWebsite)
+      const postsData = await getPostsPerDay(selectedWebsite, dateRange.startDate, dateRange.endDate)
       setPostsPerDay(postsData)
       setLoading((prev) => ({ ...prev, postsPerDay: false }))
 
-      const authorsData = await getTopAuthors(selectedWebsite)
+      const authorsData = await getTopAuthors(selectedWebsite, dateRange.startDate, dateRange.endDate)
       setTopAuthors(authorsData)
       setLoading((prev) => ({ ...prev, topAuthors: false }))
 
-      const articlesData = await getRecentArticles(20, selectedWebsite)
+      const articlesData = await getRecentArticles(20, selectedWebsite, dateRange.startDate, dateRange.endDate)
       setRecentArticles(articlesData)
       setLoading((prev) => ({ ...prev, recentArticles: false }))
     } catch (err) {
@@ -74,7 +80,7 @@ function App() {
   return (
     <div className="container">
       <div className="header">
-        <h1>📊 Webhook Analytics Dashboard</h1>
+        <h1>RM Analytics Dashboard</h1>
         <p>Real-time insights into your published content</p>
       </div>
 
@@ -84,12 +90,20 @@ function App() {
         </div>
       )}
 
-      <WebsiteSelector
-        websites={websites}
-        selectedWebsite={selectedWebsite}
-        onSelect={setSelectedWebsite}
-        isLoading={loading.websites}
-      />
+      <div className="controls-section">
+        <WebsiteSelector
+          websites={websites}
+          selectedWebsite={selectedWebsite}
+          onSelect={setSelectedWebsite}
+          isLoading={loading.websites}
+        />
+
+        <DateRangeSelector
+          dateRange={dateRange}
+          onDateRangeChange={setDateRange}
+          isLoading={Object.values(loading).some(l => l)}
+        />
+      </div>
 
       <div className="dashboard-grid">
         <StatsCard
@@ -143,7 +157,7 @@ function App() {
       </div>
 
       <div className="footer">
-        <p>Dashboard auto-refreshes every 30 seconds • Built with React & Recharts</p>
+        <p>Dashboard auto-refreshes every 30 seconds</p>
       </div>
     </div>
   )

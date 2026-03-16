@@ -3,6 +3,7 @@ import logging
 import json
 import secrets
 import psycopg2
+from datetime import datetime, timedelta
 from fastapi import FastAPI, Request, HTTPException, Depends
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.staticfiles import StaticFiles
@@ -289,39 +290,52 @@ async def get_websites():
 
 
 @app.get("/api/stats")
-async def get_stats(website_id: str = None):
-    """Get overall statistics, optionally filtered by website"""
+async def get_stats(website_id: str = None, start_date: str = None, end_date: str = None):
+    """Get overall statistics, optionally filtered by website and date range"""
     conn = None
     cur = None
     try:
         conn = psycopg2.connect(DB_URL)
         cur = conn.cursor()
 
+        # Build WHERE clause
+        where_clauses = ["author_id IS NOT NULL"]
+        params = []
+
         if website_id:
-            cur.execute("""
-                SELECT 
-                    COUNT(DISTINCT post_id) as total_articles,
-                    COUNT(DISTINCT author_id) as total_authors,
-                    MAX(created_ts) as latest_article_ts
-                FROM articles_with_authors
-                WHERE author_id IS NOT NULL AND website_id = %s
-            """, (website_id,))
-        else:
-            cur.execute("""
-                SELECT 
-                    COUNT(DISTINCT post_id) as total_articles,
-                    COUNT(DISTINCT author_id) as total_authors,
-                    MAX(created_ts) as latest_article_ts
-                FROM articles_with_authors
-                WHERE author_id IS NOT NULL
-            """)
+            where_clauses.append("website_id = %s")
+            params.append(website_id)
+
+        if start_date:
+            start_ts = int(datetime.strptime(start_date, '%Y-%m-%d').timestamp())
+            where_clauses.append("created_ts >= %s")
+            params.append(start_ts)
+
+        if end_date:
+            end_dt = datetime.strptime(end_date, '%Y-%m-%d') + timedelta(days=1)
+            end_ts = int(end_dt.timestamp())
+            where_clauses.append("created_ts < %s")
+            params.append(end_ts)
+
+        where_clause = " AND ".join(where_clauses)
+        query = f"""
+            SELECT 
+                COUNT(DISTINCT post_id) as total_articles,
+                COUNT(DISTINCT author_id) as total_authors,
+                MAX(created_ts) as latest_article_ts
+            FROM articles_with_authors
+            WHERE {where_clause}
+        """
         
+        cur.execute(query, params)
         stats = cur.fetchone()
         return {
             "total_articles": stats[0] or 0,
             "total_authors": stats[1] or 0,
             "latest_article_ts": stats[2],
-            "website_id": website_id
+            "website_id": website_id,
+            "start_date": start_date,
+            "end_date": end_date
         }
     except Exception as e:
         logging.error(f"Error fetching stats: {str(e)}")
@@ -334,37 +348,46 @@ async def get_stats(website_id: str = None):
 
 
 @app.get("/api/posts-per-day")
-async def get_posts_per_day(website_id: str = None):
-    """Get posts published per day, optionally filtered by website"""
+async def get_posts_per_day(website_id: str = None, start_date: str = None, end_date: str = None):
+    """Get posts published per day, optionally filtered by website and date range"""
     conn = None
     cur = None
     try:
         conn = psycopg2.connect(DB_URL)
         cur = conn.cursor()
 
+        # Build WHERE clause
+        where_clauses = ["created_ts IS NOT NULL", "author_id IS NOT NULL"]
+        params = []
+
         if website_id:
-            cur.execute("""
-                SELECT 
-                    TO_CHAR(TO_TIMESTAMP(created_ts), 'YYYY-MM-DD') as date,
-                    COUNT(DISTINCT post_id) as post_count
-                FROM articles_with_authors
-                WHERE created_ts IS NOT NULL AND author_id IS NOT NULL AND website_id = %s
-                GROUP BY TO_CHAR(TO_TIMESTAMP(created_ts), 'YYYY-MM-DD')
-                ORDER BY date DESC
-                LIMIT 30
-            """, (website_id,))
-        else:
-            cur.execute("""
-                SELECT 
-                    TO_CHAR(TO_TIMESTAMP(created_ts), 'YYYY-MM-DD') as date,
-                    COUNT(DISTINCT post_id) as post_count
-                FROM articles_with_authors
-                WHERE created_ts IS NOT NULL AND author_id IS NOT NULL
-                GROUP BY TO_CHAR(TO_TIMESTAMP(created_ts), 'YYYY-MM-DD')
-                ORDER BY date DESC
-                LIMIT 30
-            """)
+            where_clauses.append("website_id = %s")
+            params.append(website_id)
+
+        if start_date:
+            start_ts = int(datetime.strptime(start_date, '%Y-%m-%d').timestamp())
+            where_clauses.append("created_ts >= %s")
+            params.append(start_ts)
+
+        if end_date:
+            end_dt = datetime.strptime(end_date, '%Y-%m-%d') + timedelta(days=1)
+            end_ts = int(end_dt.timestamp())
+            where_clauses.append("created_ts < %s")
+            params.append(end_ts)
+
+        where_clause = " AND ".join(where_clauses)
+        query = f"""
+            SELECT 
+                TO_CHAR(TO_TIMESTAMP(created_ts), 'YYYY-MM-DD') as date,
+                COUNT(DISTINCT post_id) as post_count
+            FROM articles_with_authors
+            WHERE {where_clause}
+            GROUP BY TO_CHAR(TO_TIMESTAMP(created_ts), 'YYYY-MM-DD')
+            ORDER BY date DESC
+            LIMIT 365
+        """
         
+        cur.execute(query, params)
         rows = cur.fetchall()
         return [
             {"date": row[0], "count": row[1]}
@@ -381,43 +404,49 @@ async def get_posts_per_day(website_id: str = None):
 
 
 @app.get("/api/top-authors")
-async def get_top_authors(website_id: str = None):
-    """Get top authors by post count, optionally filtered by website"""
+async def get_top_authors(website_id: str = None, start_date: str = None, end_date: str = None):
+    """Get top authors by post count, optionally filtered by website and date range"""
     conn = None
     cur = None
     try:
         conn = psycopg2.connect(DB_URL)
         cur = conn.cursor()
 
+        # Build WHERE clause
+        where_clauses = ["author_id IS NOT NULL"]
+        params = []
+
         if website_id:
-            cur.execute("""
-                SELECT 
-                    author_id,
-                    displayname,
-                    photo,
-                    profile_url,
-                    COUNT(DISTINCT post_id) as post_count
-                FROM articles_with_authors
-                WHERE author_id IS NOT NULL AND website_id = %s
-                GROUP BY author_id, displayname, photo, profile_url
-                ORDER BY post_count DESC
-                LIMIT 15
-            """, (website_id,))
-        else:
-            cur.execute("""
-                SELECT 
-                    author_id,
-                    displayname,
-                    photo,
-                    profile_url,
-                    COUNT(DISTINCT post_id) as post_count
-                FROM articles_with_authors
-                WHERE author_id IS NOT NULL
-                GROUP BY author_id, displayname, photo, profile_url
-                ORDER BY post_count DESC
-                LIMIT 15
-            """)
+            where_clauses.append("website_id = %s")
+            params.append(website_id)
+
+        if start_date:
+            start_ts = int(datetime.strptime(start_date, '%Y-%m-%d').timestamp())
+            where_clauses.append("created_ts >= %s")
+            params.append(start_ts)
+
+        if end_date:
+            end_dt = datetime.strptime(end_date, '%Y-%m-%d') + timedelta(days=1)
+            end_ts = int(end_dt.timestamp())
+            where_clauses.append("created_ts < %s")
+            params.append(end_ts)
+
+        where_clause = " AND ".join(where_clauses)
+        query = f"""
+            SELECT 
+                author_id,
+                displayname,
+                photo,
+                profile_url,
+                COUNT(DISTINCT post_id) as post_count
+            FROM articles_with_authors
+            WHERE {where_clause}
+            GROUP BY author_id, displayname, photo, profile_url
+            ORDER BY post_count DESC
+            LIMIT 15
+        """
         
+        cur.execute(query, params)
         rows = cur.fetchall()
         return [
             {
@@ -440,71 +469,65 @@ async def get_top_authors(website_id: str = None):
 
 
 @app.get("/api/recent-articles")
-async def get_recent_articles(limit: int = 20, website_id: str = None):
-    """Get recent articles, optionally filtered by website"""
+async def get_recent_articles(limit: int = 20, website_id: str = None, start_date: str = None, end_date: str = None):
+    """Get recent articles, optionally filtered by website and date range"""
     conn = None
     cur = None
     try:
         conn = psycopg2.connect(DB_URL)
         cur = conn.cursor()
 
+        # Build WHERE clause
+        where_clauses = ["created_ts IS NOT NULL"]
+        params = []
+
         if website_id:
-            cur.execute("""
-                SELECT DISTINCT ON (post_id)
-                    post_id,
-                    headline,
-                    post_url,
-                    created_ts,
-                    displayed_name,
-                    photo,
-                    profile_url,
-                    website_name
-                FROM (
-                    SELECT 
-                        post_id,
-                        headline,
-                        post_url,
-                        created_ts,
-                        displayname as displayed_name,
-                        photo,
-                        profile_url,
-                        website_name
-                    FROM articles_with_authors
-                    WHERE created_ts IS NOT NULL AND website_id = %s
-                    ORDER BY post_id DESC, author_id DESC
-                ) recent_posts
-                ORDER BY post_id DESC
-                LIMIT %s
-            """, (website_id, limit))
-        else:
-            cur.execute("""
-                SELECT DISTINCT ON (post_id)
-                    post_id,
-                    headline,
-                    post_url,
-                    created_ts,
-                    displayed_name,
-                    photo,
-                    profile_url,
-                    website_name
-                FROM (
-                    SELECT 
-                        post_id,
-                        headline,
-                        post_url,
-                        created_ts,
-                        displayname as displayed_name,
-                        photo,
-                        profile_url,
-                        website_name
-                    FROM articles_with_authors
-                    WHERE created_ts IS NOT NULL
-                    ORDER BY post_id DESC, author_id DESC
-                ) recent_posts
-                ORDER BY post_id DESC
-                LIMIT %s
-            """, (limit,))
+            where_clauses.append("website_id = %s")
+            params.append(website_id)
+
+        if start_date:
+            start_ts = int(datetime.strptime(start_date, '%Y-%m-%d').timestamp())
+            where_clauses.append("created_ts >= %s")
+            params.append(start_ts)
+
+        if end_date:
+            end_dt = datetime.strptime(end_date, '%Y-%m-%d') + timedelta(days=1)
+            end_ts = int(end_dt.timestamp())
+            where_clauses.append("created_ts < %s")
+            params.append(end_ts)
+
+        where_clause = " AND ".join(where_clauses)
+        params.append(limit)
         
+        query = f"""
+            SELECT DISTINCT ON (post_id)
+                post_id,
+                headline,
+                post_url,
+                created_ts,
+                displayed_name,
+                photo,
+                profile_url,
+                website_name
+            FROM (
+                SELECT 
+                    post_id,
+                    headline,
+                    post_url,
+                    created_ts,
+                    displayname as displayed_name,
+                    photo,
+                    profile_url,
+                    website_name
+                FROM articles_with_authors
+                WHERE {where_clause}
+                ORDER BY post_id DESC, author_id DESC
+            ) recent_posts
+            ORDER BY post_id DESC
+            LIMIT %s
+        """
+        
+        cur.execute(query, params)
         rows = cur.fetchall()
         return [
             {

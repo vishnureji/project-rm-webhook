@@ -12,27 +12,38 @@ export const getWebsites = async () => {
   return response.data
 }
 
-export const getStats = async (websiteId = null) => {
-  const params = websiteId ? { website_id: websiteId } : {}
+export const getStats = async (websiteId = null, startDate = null, endDate = null) => {
+  const params = {}
+  if (websiteId) params.website_id = websiteId
+  if (startDate) params.start_date = startDate
+  if (endDate) params.end_date = endDate
   const response = await api.get('/stats', { params })
   return response.data
 }
 
-export const getPostsPerDay = async (websiteId = null) => {
-  const params = websiteId ? { website_id: websiteId } : {}
+export const getPostsPerDay = async (websiteId = null, startDate = null, endDate = null) => {
+  const params = {}
+  if (websiteId) params.website_id = websiteId
+  if (startDate) params.start_date = startDate
+  if (endDate) params.end_date = endDate
   const response = await api.get('/posts-per-day', { params })
   return response.data
 }
 
-export const getTopAuthors = async (websiteId = null) => {
-  const params = websiteId ? { website_id: websiteId } : {}
+export const getTopAuthors = async (websiteId = null, startDate = null, endDate = null) => {
+  const params = {}
+  if (websiteId) params.website_id = websiteId
+  if (startDate) params.start_date = startDate
+  if (endDate) params.end_date = endDate
   const response = await api.get('/top-authors', { params })
   return response.data
 }
 
-export const getRecentArticles = async (limit = 20, websiteId = null) => {
+export const getRecentArticles = async (limit = 20, websiteId = null, startDate = null, endDate = null) => {
   const params = { limit }
   if (websiteId) params.website_id = websiteId
+  if (startDate) params.start_date = startDate
+  if (endDate) params.end_date = endDate
   const response = await api.get(`/recent-articles`, { params })
   return response.data
 }
