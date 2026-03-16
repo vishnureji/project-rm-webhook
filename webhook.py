@@ -117,7 +117,7 @@ def upsert_to_master(data):
             conn.close()
 
 
-@app.get("/")
+@app.get("/health")
 async def health_check():
     return {"status": "ok", "message": "Webhook server is running"}
 
