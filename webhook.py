@@ -7,6 +7,7 @@ from fastapi import FastAPI, Request, HTTPException, Depends
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
+from urllib.parse import urlparse
 
 # --- LOGGING CONFIGURATION ---
 logging.basicConfig(
@@ -21,6 +22,14 @@ security = HTTPBasic()
 DB_URL = os.getenv("DATABASE_URL")
 EXPECTED_USER = os.getenv("WEBHOOK_USER")
 EXPECTED_PASS = os.getenv("WEBHOOK_PASS")
+
+# Optional: Website domain to name mapping (can be configured via environment)
+WEBSITE_MAPPING = os.getenv("WEBSITE_MAPPING", "{}")
+try:
+    import json as json_module
+    WEBSITE_MAPPING = json_module.loads(WEBSITE_MAPPING)
+except:
+    WEBSITE_MAPPING = {}
 
 
 def authenticate(credentials: HTTPBasicCredentials = Depends(security)):
@@ -41,7 +50,49 @@ def authenticate(credentials: HTTPBasicCredentials = Depends(security)):
     return credentials.username
 
 
-def upsert_to_master(data):
+def extract_website_from_url(url):
+    """Extract website domain from URL"""
+    try:
+        parsed = urlparse(url)
+        domain = parsed.netloc.replace("www.", "")
+        return domain
+    except:
+        return "unknown"
+
+
+def get_website_info(post_url, website_id_from_payload=None, website_name_from_payload=None):
+    """
+    Extract or determine website identification
+    Priority: explicit fields > URL extraction > defaults
+    """
+    # If explicitly provided, use them
+    if website_id_from_payload and website_name_from_payload:
+        return website_id_from_payload, website_name_from_payload
+    
+    # Extract from URL
+    if post_url:
+        domain = extract_website_from_url(post_url)
+        
+        # If website_id provided explicitly, use it with domain-derived name
+        if website_id_from_payload:
+            # Check if we have a mapping for this domain
+            display_name = WEBSITE_MAPPING.get(domain, domain.replace(".com", "").title())
+            return website_id_from_payload, display_name
+        
+        # Use domain as website_id
+        if domain != "unknown":
+            # Check if we have a friendly name mapping
+            display_name = WEBSITE_MAPPING.get(domain, domain.replace(".com", "").title())
+            return domain, display_name
+    
+    # Fallback
+    if website_name_from_payload:
+        return website_id_from_payload or "default", website_name_from_payload
+    
+    return "default", "Unknown Website"
+
+
+def authenticate(credentials: HTTPBasicCredentials = Depends(security)):
     conn = None
     cur = None
     try:
@@ -147,9 +198,15 @@ async def rebelmouse_webhook(
             logging.warning("Webhook received but missing Article ID.")
             return {"status": "ignored", "message": "Missing ID"}
 
-        # ✅ Extract website identification (from payload or headers)
-        website_id = post_data_raw.get("website_id") or payload.get("website_id") or "default"
-        website_name = post_data_raw.get("website_name") or payload.get("website_name") or "Unknown Website"
+        # Get post_url for automatic website detection
+        post_url = post_data_raw.get("post_url")
+
+        # ✅ Extract or use explicit website identification
+        # Priority: explicit fields > URL extraction > defaults
+        website_id_payload = post_data_raw.get("website_id") or payload.get("website_id")
+        website_name_payload = post_data_raw.get("website_name") or payload.get("website_name")
+        
+        website_id, website_name = get_website_info(post_url, website_id_payload, website_name_payload)
 
         # ✅ Normalize roar_authors → authors with DB-expected field names
         #    roar_authors[].id          → author_id
@@ -173,14 +230,14 @@ async def rebelmouse_webhook(
             "website_id":  website_id,
             "website_name": website_name,
             "headline":    post_data_raw.get("headline"),
-            "post_url":    post_data_raw.get("post_url"),
+            "post_url":    post_url,
             "created_ts":  post_data_raw.get("created_ts"),
             "updated_ts":  post_data_raw.get("updated_ts"),
             "authors":     normalized_authors,
         }
 
         upsert_to_master(post_data)
-        return {"status": "success", "message": "Article Synced", "website": website_name}
+        return {"status": "success", "message": "Article Synced", "website": website_name, "website_id": website_id}
 
     except Exception as e:
         logging.critical(f"System Failure: {str(e)}")
