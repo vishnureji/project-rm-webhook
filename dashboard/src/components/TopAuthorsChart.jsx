@@ -19,11 +19,15 @@ export default function TopAuthorsChart({ data, isLoading, selectedAuthorId, onA
     author_id: author.author_id,
   }))
 
-  const handleBarClick = (data) => {
-    onAuthorSelect({
-      author_id: data.author_id,
-      name: data.name
-    })
+  const handleBarClick = (clickedData) => {
+    // Find the full author data from chartData to get author_id
+    const authorData = chartData.find(item => item.name === clickedData.name)
+    if (authorData) {
+      onAuthorSelect({
+        author_id: authorData.author_id,
+        name: authorData.name
+      })
+    }
   }
 
   return (
@@ -57,7 +61,6 @@ export default function TopAuthorsChart({ data, isLoading, selectedAuthorId, onA
             <Bar 
               dataKey="posts" 
               name="Published Posts"
-              onClick={(data) => handleBarClick(data)}
               style={{ cursor: 'pointer' }}
             >
               {chartData.map((entry) => (
@@ -65,6 +68,7 @@ export default function TopAuthorsChart({ data, isLoading, selectedAuthorId, onA
                   key={`cell-${entry.author_id}`}
                   fill={selectedAuthorId === entry.author_id ? '#1f73e6' : '#764ba2'}
                   style={{ cursor: 'pointer' }}
+                  onClick={() => handleBarClick(entry)}
                 />
               ))}
             </Bar>
