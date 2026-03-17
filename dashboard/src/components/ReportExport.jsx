@@ -92,7 +92,7 @@ function ReportExport({ websites, dateRange, selectedWebsite }) {
   return (
     <div className="report-export-container">
       <div className="report-header">
-        <h2><FiDownload style={{display: 'inline', marginRight: '8px'}} /> Export Report</h2>
+        <h2><Download style={{display: 'inline', marginRight: '8px'}} /> Export Report</h2>
         <p>Download analytics data in CSV format</p>
       </div>
 
@@ -150,9 +150,9 @@ function ReportExport({ websites, dateRange, selectedWebsite }) {
           disabled={exporting}
         >
           {exporting ? (
-            <><FiAlertCircle style={{display: 'inline', marginRight: '6px'}} /> Exporting...</>
+            <><AlertCircle style={{display: 'inline', marginRight: '6px'}} /> Exporting...</>
           ) : (
-            <><FiDownload style={{display: 'inline', marginRight: '6px'}} /> Download CSV</>
+            <><Download style={{display: 'inline', marginRight: '6px'}} /> Download CSV</>
           )}
         </button>
         {message && <span className={`export-message ${message.startsWith('✓') || !message.startsWith('❌') ? 'success' : 'error'}`}>{message}</span>}
@@ -160,7 +160,7 @@ function ReportExport({ websites, dateRange, selectedWebsite }) {
 
       <div className="report-info">
         <p>
-          <FiAlertCircle style={{display: 'inline', marginRight: '8px', verticalAlign: 'middle'}} />
+          <AlertCircle style={{display: 'inline', marginRight: '8px', verticalAlign: 'middle'}} />
           <strong>About this export:</strong> The CSV file will contain unformatted data for all selected filters.
           Includes timestamps, URLs, IDs, and other metrics for analysis.
         </p>
