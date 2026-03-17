@@ -10,10 +10,10 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: #f8f9fa;
+  background: #f9f9f9;
   min-height: 100vh;
   padding: 0;
-  color: #202124;
+  color: #1a1a1a;
 }
 
 .container {
@@ -24,7 +24,7 @@ body {
 .header {
   text-align: left;
   margin-bottom: 32px;
-  border-bottom: 1px solid #dadce0;
+  border-bottom: 1px solid #e5e5e5;
   padding-bottom: 20px;
 }
 
@@ -32,12 +32,12 @@ body {
   font-size: 2rem;
   font-weight: 600;
   margin-bottom: 6px;
-  color: #202124;
+  color: #1a1a1a;
 }
 
 .header p {
   font-size: 0.975rem;
-  color: #5f6368;
+  color: #666;
 }
 
 .controls-section {
@@ -51,7 +51,7 @@ body {
   background: white;
   border-radius: 8px;
   padding: 16px;
-  border: 1px solid #dadce0;
+  border: 1px solid #e5e5e5;
   display: flex;
   align-items: center;
   gap: 16px;
@@ -66,7 +66,7 @@ body {
 
 .website-selector label {
   font-weight: 500;
-  color: #202124;
+  color: #1a1a1a;
   white-space: nowrap;
   font-size: 0.9rem;
 }
@@ -75,29 +75,30 @@ body {
   flex: 1;
   max-width: 400px;
   padding: 8px 12px;
-  border: 1px solid #dadce0;
+  border: 1px solid #e5e5e5;
   border-radius: 4px;
   font-size: 0.9rem;
   background: white;
-  color: #202124;
+  color: #1a1a1a;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .website-selector select:hover:not(:disabled) {
-  border-color: #c6c6c6;
-  background: #f8f9fa;
+  border-color: #d0d0d0;
+  background: #f9f9f9;
 }
 
 .website-selector select:focus {
   outline: none;
-  border-color: #1f73e6;
-  box-shadow: 0 0 0 2px rgba(31, 115, 230, 0.15);
+  border-color: #0066cc;
+  box-shadow: 0 0 0 2px rgba(0, 102, 204, 0.1);
 }
 
 .website-selector select:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
 }
 
 .website-info {

@@ -1,37 +1,50 @@
-import React from 'react'
-import { BarChart3, Mail, Home } from 'lucide-react'
+import React, { useState } from 'react'
+import { BarChart3, Mail, Home, ChevronLeft, ChevronRight } from 'lucide-react'
 import '../styles/Sidebar.css'
 
 export default function Sidebar({ currentPage, onPageChange }) {
+  const [isCollapsed, setIsCollapsed] = useState(false)
+
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar ${isCollapsed ? 'collapsed' : ''}`}>
       <div className="sidebar-header">
-        <h2>Dashboard</h2>
+        <div className="sidebar-logo">
+          <img src="https://amg.biz/wp-content/uploads/2022/12/logo-3.png" alt="Logo" />
+        </div>
+        {!isCollapsed && <h2>Dashboard</h2>}
+        <button
+          className="toggle-btn"
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          title={isCollapsed ? 'Expand' : 'Collapse'}
+        >
+          {isCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+        </button>
       </div>
 
       <nav className="sidebar-nav">
         <button
           className={`nav-item ${currentPage === 'analytics' ? 'active' : ''}`}
           onClick={() => onPageChange('analytics')}
-          title="Content Analytics Dashboard"
+          title="Analytics Dashboard"
         >
-          <Home style={{ width: '20px', height: '20px' }} />
-          <span>Analytics</span>
+          <BarChart3 size={20} />
+          {!isCollapsed && <span>Analytics</span>}
         </button>
 
         <button
           className={`nav-item ${currentPage === 'mailchimp' ? 'active' : ''}`}
           onClick={() => onPageChange('mailchimp')}
-          title="Mailchimp Email Marketing"
+          title="Mailchimp Dashboard"
         >
-          <Mail style={{ width: '20px', height: '20px' }} />
-          <span>Mailchimp</span>
+          <Mail size={20} />
+          {!isCollapsed && <span>Mailchimp</span>}
         </button>
       </nav>
 
       <div className="sidebar-footer">
-        <p className="sidebar-version">v1.0.0</p>
+        {!isCollapsed && <p className="sidebar-version">v1.0.0</p>}
       </div>
     </aside>
   )
 }
+

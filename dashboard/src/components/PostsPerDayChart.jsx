@@ -1,5 +1,5 @@
 import React from 'react'
-import { FiBarChart2 } from 'react-icons/fi'
+import { BarChart3 } from 'lucide-react'
 import {
   BarChart,
   Bar,
@@ -16,7 +16,7 @@ export default function PostsPerDayChart({ data, isLoading }) {
 
   return (
     <div className="card chart-card">
-      <h3 className="chart-title"><FiBarChart2 style={{display: 'inline', marginRight: '8px'}} /> Posts Published Per Day</h3>
+      <h3 className="chart-title"><BarChart3 style={{display: 'inline', marginRight: '8px', width: '18px', height: '18px'}} /> Posts Published Per Day</h3>
       {isLoading ? (
         <div className="spinner">Loading chart data...</div>
       ) : chartData.length === 0 ? (
@@ -34,12 +34,12 @@ export default function PostsPerDayChart({ data, isLoading }) {
                 borderRadius: '8px',
                 padding: '10px',
               }}
-              cursor={{ fill: 'rgba(102, 126, 234, 0.1)' }}
+              cursor={{ fill: 'rgba(0, 102, 204, 0.1)' }}
             />
             <Legend />
             <Bar
               dataKey="count"
-              fill="#667eea"
+              fill="#0066cc"
               name="Posts"
               radius={[8, 8, 0, 0]}
             />

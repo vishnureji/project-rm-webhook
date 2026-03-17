@@ -1,7 +1,5 @@
 import React from 'react'
-import { FiFileText, FiCalendar, FiExternalLink } from 'react-icons/fi'
-import { MdClose } from 'react-icons/md'
-import { UserPen } from 'lucide-react'
+import { FileText, Calendar, ExternalLink, X, UserPen } from 'lucide-react'
 
 export default function RecentArticles({ data, isLoading, selectedAuthor, onClearAuthorFilter }) {
   const formatDate = (timestamp) => {
@@ -28,14 +26,14 @@ export default function RecentArticles({ data, isLoading, selectedAuthor, onClea
   return (
     <div className="card">
       <div className="recent-articles-header">
-        <h3 className="chart-title"><FiFileText style={{display: 'inline', marginRight: '8px'}} /> Recent Articles</h3>
+        <h3 className="chart-title"><FileText style={{display: 'inline', marginRight: '8px', width: '18px', height: '18px'}} /> Recent Articles</h3>
         {selectedAuthor && (
           <div className="articles-filter-info">
             <span className="filter-tag" style={{display: 'flex', alignItems: 'center', gap: '4px'}}>
               <UserPen style={{width: '16px', height: '16px'}} /> Author: <strong>{selectedAuthor.name}</strong>
             </span>
             <button className="clear-filter-btn" onClick={onClearAuthorFilter}>
-              <MdClose style={{fontSize: '1.2rem'}} />
+              <X style={{width: '18px', height: '18px'}} />
             </button>
           </div>
         )}
@@ -56,8 +54,8 @@ export default function RecentArticles({ data, isLoading, selectedAuthor, onClea
                 {article.headline || 'Untitled'}
               </div>
               <div className="article-meta">
-                <span><FiCalendar style={{display: 'inline', marginRight: '4px'}} />{formatDate(article.created_ts)}</span>
-                {article.author && <span><FiCalendar style={{display: 'inline', marginRight: '4px'}} />{article.author}</span>}
+                <span><Calendar style={{display: 'inline', marginRight: '4px', width: '14px', height: '14px'}} />{formatDate(article.created_ts)}</span>
+                {article.author && <span><UserPen style={{display: 'inline', marginRight: '4px', width: '14px', height: '14px'}} />{article.author}</span>}
               </div>
               {article.post_url && (
                 <a
@@ -66,7 +64,7 @@ export default function RecentArticles({ data, isLoading, selectedAuthor, onClea
                   rel="noopener noreferrer"
                   className="article-link"
                 >
-                  <FiExternalLink style={{display: 'inline', marginRight: '4px'}} />View Article
+                  <ExternalLink style={{display: 'inline', marginRight: '4px', width: '14px', height: '14px'}} />View Article
                 </a>
               )}
             </div>

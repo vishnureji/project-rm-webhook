@@ -93,13 +93,13 @@ export default function MailchimpDashboard() {
   return (
     <div className="mailchimp-dashboard">
       <div className="page-header">
-        <h1>📧 Mailchimp Email Marketing</h1>
+        <h1>Mailchimp Email Marketing</h1>
         <p>Manage your audiences, campaigns, and email performance</p>
       </div>
 
       {error && (
         <div className="error-message">
-          <strong>⚠️ Error:</strong> {error}
+          <strong>Error:</strong> {error}
         </div>
       )}
 

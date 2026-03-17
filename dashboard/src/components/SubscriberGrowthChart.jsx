@@ -6,7 +6,7 @@ export default function SubscriberGrowthChart({ data, isLoading, audienceName })
   if (isLoading) {
     return (
       <div className="card chart-card">
-        <h3 className="chart-title"><TrendingUp style={{display: 'inline', marginRight: '8px', width: '20px', height: '20px'}} /> Subscriber Growth</h3>
+        <h3 className="chart-title"><TrendingUp style={{display: 'inline', marginRight: '8px', width: '18px', height: '18px'}} /> Subscriber Growth</h3>
         <div className="spinner">Loading growth data...</div>
       </div>
     )
@@ -15,7 +15,7 @@ export default function SubscriberGrowthChart({ data, isLoading, audienceName })
   if (!data || data.length === 0) {
     return (
       <div className="card chart-card">
-        <h3 className="chart-title"><TrendingUp style={{display: 'inline', marginRight: '8px', width: '20px', height: '20px'}} /> Subscriber Growth</h3>
+        <h3 className="chart-title"><TrendingUp style={{display: 'inline', marginRight: '8px', width: '18px', height: '18px'}} /> Subscriber Growth</h3>
         <div className="spinner">No growth data available</div>
       </div>
     )
@@ -23,15 +23,15 @@ export default function SubscriberGrowthChart({ data, isLoading, audienceName })
 
   return (
     <div className="card chart-card">
-      <h3 className="chart-title"><TrendingUp style={{display: 'inline', marginRight: '8px', width: '20px', height: '20px'}} /> Subscriber Growth</h3>
+      <h3 className="chart-title"><TrendingUp style={{display: 'inline', marginRight: '8px', width: '18px', height: '18px'}} /> Subscriber Growth</h3>
       {audienceName && <p className="chart-subtitle">{audienceName}</p>}
       
       <ResponsiveContainer width="100%" height={350}>
         <AreaChart data={data}>
           <defs>
             <linearGradient id="colorGrowth" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#764ba2" stopOpacity={0.8}/>
-              <stop offset="95%" stopColor="#764ba2" stopOpacity={0}/>
+            <stop offset="5%" stopColor="#0066cc" stopOpacity={0.8}/>
+            <stop offset="95%" stopColor="#0066cc" stopOpacity={0}/>
             </linearGradient>
           </defs>
           <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
@@ -59,7 +59,7 @@ export default function SubscriberGrowthChart({ data, isLoading, audienceName })
           <Area
             type="monotone"
             dataKey="total"
-            stroke="#764ba2"
+            stroke="#0066cc"
             fillOpacity={1}
             fill="url(#colorGrowth)"
             name="Total Subscribers"

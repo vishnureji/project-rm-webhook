@@ -96,7 +96,7 @@ function App() {
 
             {error && (
               <div className="error-message">
-                <strong>❌ Error:</strong> {error}
+                <strong>Error:</strong> {error}
               </div>
             )}
 

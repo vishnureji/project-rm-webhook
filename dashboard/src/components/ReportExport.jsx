@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { FiDownload, FiAlertCircle, FiLock } from 'react-icons/fi'
+import { Download, AlertCircle, Lock } from 'lucide-react'
 import { getStats, getPostsPerDay, getTopAuthors, getRecentArticles, getWebsites } from '../api'
 import { 
   exportToCSV, 
@@ -68,7 +68,7 @@ function ReportExport({ websites, dateRange, selectedWebsite }) {
       setTimeout(() => setMessage(''), 3000)
     } catch (error) {
       console.error('Export error:', error)
-      setMessage('❌ Error exporting data')
+      setMessage('Error exporting data')
     } finally {
       setExporting(false)
     }

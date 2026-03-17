@@ -1,11 +1,11 @@
 import React from 'react'
-import { Mail, Users } from 'lucide-react'
+import { Users } from 'lucide-react'
 
 export default function MailchimpAudiences({ data, isLoading, onAudienceSelect, selectedAudienceId }) {
   if (isLoading) {
     return (
       <div className="card">
-        <h3 className="chart-title"><Users style={{display: 'inline', marginRight: '8px', width: '20px', height: '20px'}} /> Audiences</h3>
+        <h3 className="chart-title"><Users style={{display: 'inline', marginRight: '8px', width: '18px', height: '18px'}} /> Audiences</h3>
         <div className="spinner">Loading audiences...</div>
       </div>
     )
@@ -22,7 +22,7 @@ export default function MailchimpAudiences({ data, isLoading, onAudienceSelect, 
 
   return (
     <div className="card">
-      <h3 className="chart-title"><Users style={{display: 'inline', marginRight: '8px', width: '20px', height: '20px'}} /> Email Audiences</h3>
+      <h3 className="chart-title"><Users style={{display: 'inline', marginRight: '8px', width: '18px', height: '18px'}} /> Email Audiences</h3>
       <div className="audiences-list">
         {data.map((audience) => (
           <div

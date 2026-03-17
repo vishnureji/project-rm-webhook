@@ -5,7 +5,7 @@ export default function MailchimpCampaigns({ data, isLoading, onCampaignSelect, 
   if (isLoading) {
     return (
       <div className="card">
-        <h3 className="chart-title"><Send style={{display: 'inline', marginRight: '8px', width: '20px', height: '20px'}} /> Campaigns</h3>
+        <h3 className="chart-title"><Send style={{display: 'inline', marginRight: '8px', width: '18px', height: '18px'}} /> Campaigns</h3>
         <div className="spinner">Loading campaigns...</div>
       </div>
     )
@@ -22,7 +22,7 @@ export default function MailchimpCampaigns({ data, isLoading, onCampaignSelect, 
 
   return (
     <div className="card">
-      <h3 className="chart-title"><Send style={{display: 'inline', marginRight: '8px', width: '20px', height: '20px'}} /> Recent Campaigns</h3>
+      <h3 className="chart-title"><Send style={{display: 'inline', marginRight: '8px', width: '18px', height: '18px'}} /> Recent Campaigns</h3>
       <div className="campaigns-list">
         {data.map((campaign) => (
           <div

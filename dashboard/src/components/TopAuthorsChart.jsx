@@ -32,7 +32,7 @@ export default function TopAuthorsChart({ data, isLoading, selectedAuthorId, onA
 
   return (
     <div className="card chart-card">
-      <h3 className="chart-title"><UserPen style={{display: 'inline', marginRight: '8px', width: '20px', height: '20px'}} /> Top Authors by Posts</h3>
+      <h3 className="chart-title"><UserPen style={{display: 'inline', marginRight: '8px', width: '18px', height: '18px'}} /> Top Authors by Posts</h3>
       {isLoading ? (
         <div className="spinner">Loading chart data...</div>
       ) : chartData.length === 0 ? (
@@ -66,7 +66,7 @@ export default function TopAuthorsChart({ data, isLoading, selectedAuthorId, onA
               {chartData.map((entry) => (
                 <Cell
                   key={`cell-${entry.author_id}`}
-                  fill={selectedAuthorId === entry.author_id ? '#1f73e6' : '#764ba2'}
+                  fill={selectedAuthorId === entry.author_id ? '#0066cc' : '#8b8b99'}
                   style={{ cursor: 'pointer' }}
                   onClick={() => handleBarClick(entry)}
                 />

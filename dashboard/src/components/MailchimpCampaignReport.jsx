@@ -6,7 +6,7 @@ export default function MailchimpCampaignReport({ data, isLoading, campaignName 
   if (isLoading) {
     return (
       <div className="card chart-card">
-        <h3 className="chart-title"><Activity style={{display: 'inline', marginRight: '8px', width: '20px', height: '20px'}} /> Campaign Report</h3>
+        <h3 className="chart-title"><Activity style={{display: 'inline', marginRight: '8px', width: '18px', height: '18px'}} /> Campaign Report</h3>
         <div className="spinner">Loading report...</div>
       </div>
     )
@@ -15,7 +15,7 @@ export default function MailchimpCampaignReport({ data, isLoading, campaignName 
   if (!data || !data.campaign_id) {
     return (
       <div className="card chart-card">
-        <h3 className="chart-title"><Activity style={{display: 'inline', marginRight: '8px', width: '20px', height: '20px'}} /> Campaign Report</h3>
+        <h3 className="chart-title"><Activity style={{display: 'inline', marginRight: '8px', width: '18px', height: '18px'}} /> Campaign Report</h3>
         <div className="spinner">Select a campaign to view details</div>
       </div>
     )
@@ -36,7 +36,7 @@ export default function MailchimpCampaignReport({ data, isLoading, campaignName 
 
   return (
     <div className="card chart-card">
-      <h3 className="chart-title"><Activity style={{display: 'inline', marginRight: '8px', width: '20px', height: '20px'}} /> Campaign Report</h3>
+      <h3 className="chart-title"><Activity style={{display: 'inline', marginRight: '8px', width: '18px', height: '18px'}} /> Campaign Report</h3>
       {campaignName && <p className="chart-subtitle">{campaignName}</p>}
       
       <div className="campaign-report-grid">
