@@ -14,7 +14,7 @@ export default function Sidebar({ currentPage, onPageChange }) {
               src="https://amg.biz/wp-content/uploads/2022/12/logo-3.png" 
               alt="Logo"
               onError={(e) => {
-                e.target.parentElement.style.display = 'none'
+                e.target.style.display = 'none'
               }}
             />
           </div>
