@@ -48,4 +48,30 @@ export const getRecentArticles = async (limit = 20, websiteId = null, startDate 
   return response.data
 }
 
+// Mailchimp API endpoints
+export const getMailchimpAudiences = async () => {
+  const response = await api.get('/mailchimp/audiences')
+  return response.data
+}
+
+export const getMailchimpCampaigns = async (status = 'sent', limit = 50) => {
+  const response = await api.get('/mailchimp/campaigns', { params: { status, limit } })
+  return response.data
+}
+
+export const getMailchimpCampaignReport = async (campaignId) => {
+  const response = await api.get(`/mailchimp/campaigns/${campaignId}/report`)
+  return response.data
+}
+
+export const getAudienceGrowth = async (audienceId) => {
+  const response = await api.get(`/mailchimp/audiences/${audienceId}/growth`)
+  return response.data
+}
+
+export const getAudienceActivity = async (audienceId) => {
+  const response = await api.get(`/mailchimp/audiences/${audienceId}/activity`)
+  return response.data
+}
+
 export default api

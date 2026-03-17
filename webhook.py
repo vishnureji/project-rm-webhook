@@ -9,6 +9,7 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 from urllib.parse import urlparse
+from mailchimp_api import get_mailchimp_client
 
 # --- LOGGING CONFIGURATION ---
 logging.basicConfig(
@@ -550,6 +551,67 @@ async def get_recent_articles(limit: int = 20, website_id: str = None, start_dat
             cur.close()
         if conn:
             conn.close()
+
+
+# Mailchimp API Endpoints
+@app.get("/api/mailchimp/audiences")
+async def get_mailchimp_audiences():
+    """Get all Mailchimp audiences with subscriber counts"""
+    try:
+        client = get_mailchimp_client()
+        audiences = client.get_audiences()
+        return audiences
+    except Exception as e:
+        logging.error(f"Error fetching Mailchimp audiences: {str(e)}")
+        raise HTTPException(status_code=500, detail="Error fetching Mailchimp audiences")
+
+
+@app.get("/api/mailchimp/campaigns")
+async def get_mailchimp_campaigns(status: str = "sent", limit: int = 50):
+    """Get Mailchimp campaigns with optional status filter"""
+    try:
+        client = get_mailchimp_client()
+        campaigns = client.get_campaigns(status=status, limit=limit)
+        return campaigns
+    except Exception as e:
+        logging.error(f"Error fetching Mailchimp campaigns: {str(e)}")
+        raise HTTPException(status_code=500, detail="Error fetching Mailchimp campaigns")
+
+
+@app.get("/api/mailchimp/campaigns/{campaign_id}/report")
+async def get_mailchimp_campaign_report(campaign_id: str):
+    """Get detailed report for a specific campaign"""
+    try:
+        client = get_mailchimp_client()
+        report = client.get_campaign_report(campaign_id)
+        return report
+    except Exception as e:
+        logging.error(f"Error fetching campaign report: {str(e)}")
+        raise HTTPException(status_code=500, detail="Error fetching campaign report")
+
+
+@app.get("/api/mailchimp/audiences/{audience_id}/growth")
+async def get_audience_growth(audience_id: str):
+    """Get audience growth data over time"""
+    try:
+        client = get_mailchimp_client()
+        growth_data = client.get_audience_growth(audience_id)
+        return growth_data
+    except Exception as e:
+        logging.error(f"Error fetching audience growth: {str(e)}")
+        raise HTTPException(status_code=500, detail="Error fetching audience growth")
+
+
+@app.get("/api/mailchimp/audiences/{audience_id}/activity")
+async def get_audience_activity(audience_id: str):
+    """Get email activity for an audience"""
+    try:
+        client = get_mailchimp_client()
+        activity_data = client.get_email_activity(audience_id)
+        return activity_data
+    except Exception as e:
+        logging.error(f"Error fetching email activity: {str(e)}")
+        raise HTTPException(status_code=500, detail="Error fetching email activity")
 
 
 # Mount static files from dashboard build directory
