@@ -82,7 +82,7 @@ function App() {
   return (
     <div className="container">
       <div className="header">
-        <h1>RM Analytics Dashboard</h1>
+        <h1>Post Analytics Dashboard</h1>
         <p>Real-time insights into your published content</p>
       </div>
 
@@ -176,6 +176,7 @@ function App() {
 
       <div className="footer">
         <p>Dashboard auto-refreshes every 30 seconds</p>
+        <p>amg.biz</p>
       </div>
     </div>
   )
