@@ -246,6 +246,61 @@ async def rebelmouse_webhook(
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
 
+@app.post("/webhook/wordpress")
+async def wordpress_webhook(
+    request: Request,
+    authenticated_user: str = Depends(authenticate)
+):
+    try:
+        payload = await request.json()
+        logging.info(f"WordPress Webhook ({authenticated_user}): {json.dumps(payload)}")
+
+        # WordPress will send data directly or wrapped in 'payload'
+        post_data_raw = payload.get("payload", payload)
+
+        if not post_data_raw.get("id"):
+            logging.warning("WP Webhook missing ID.")
+            return {"status": "ignored", "message": "Missing ID"}
+
+        # Extract/Determine website info using your existing helper
+        post_url = post_data_raw.get("post_url")
+        website_id, website_name = get_website_info(
+            post_url, 
+            post_data_raw.get("website_id"), 
+            post_data_raw.get("website_name")
+        )
+
+        # Normalize WordPress authors to your 'roar_authors' style format
+        wp_authors = post_data_raw.get("authors", [])
+        normalized_authors = [
+            {
+                "author_id":   str(a.get("id")),
+                "displayname": a.get("name"),
+                "photo":       a.get("avatar"),
+                "profile_url": a.get("profile_url"),
+            }
+            for a in wp_authors if a.get("id")
+        ]
+
+        # Structure the data for upsert_to_master
+        post_data = {
+            "post_id":      post_data_raw.get("id"),
+            "website_id":   website_id,
+            "website_name": website_name,
+            "headline":     post_data_raw.get("headline"),
+            "post_url":     post_url,
+            "created_ts":   post_data_raw.get("created_ts"),
+            "updated_ts":   post_data_raw.get("updated_ts"),
+            "authors":      normalized_authors,
+        }
+
+        upsert_to_master(post_data)
+        return {"status": "success", "message": "WordPress Article Synced"}
+
+    except Exception as e:
+        logging.critical(f"WP System Failure: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
+
 @app.get("/api/websites")
 async def get_websites():
     """Get list of all websites with article counts"""
