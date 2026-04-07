@@ -1,193 +1,202 @@
-# 🎯 Webhook Analytics Dashboard
+# Post Analytics Dashboard Redesign
 
-A modern React dashboard for visualizing webhook data with charts, analytics, and real-time insights.
+This dashboard was redesigned for **enterprise SaaS analytics workflows** with a focus on scannability, comparison, and modular UI architecture.
 
-## 📋 Features
+## What Was Preserved
+- Website + date range filtering
+- KPI reporting (`total articles`, `authors`, `last updated`)
+- Posts-over-time chart
+- Top authors analysis
+- Recent articles list
+- CSV export reporting
+- Author performance evaluation and filtering
 
-- **📊 Real-time Analytics**
-  - Total articles and authors count
-  - Last updated timestamp
-  
-- **📈 Charts & Graphs**
-  - Posts published per day (bar chart)
-  - Top authors by post count (horizontal bar chart)
-  - Author statistics grid with visual cards
+No API contract, endpoint, or business logic was changed.
 
-- **📰 Article Management**
-  - Recent articles list with timestamps
-  - Direct links to published articles
-  - Author information for each article
+## New Layout Structure
 
-- **🔄 Auto-refresh**
-  - Dashboard refreshes every 30 seconds
-  - Live data updates
+### 1. Sticky Top Bar
+- `FilterBar` combines website selector, date presets, custom date input, and compact export actions
+- Keeps controls always accessible while scrolling
 
-## 🚀 Quick Start
+### 2. Insight Strip (Above the Fold)
+- 3 prominent KPI cards with trend context
+- Improved hierarchy and immediate numeric emphasis
 
-### Prerequisites
-- Node.js 16+ 
-- npm or yarn
-- Python 3.8+ (for the webhook server)
-- PostgreSQL database
+### 3. Primary Analytics
+- Main chart: posts published over time
+- Side comparison: platform contribution + momentum table
 
-### 1. Install Dashboard Dependencies
+### 4. Secondary Insights
+- Top authors chart (selectable)
+- Ranked author performance list with contribution quality tags
 
+### 5. Content Section
+- Structured article table for fast scanning:
+  - Title
+  - Author
+  - Platform
+  - Date
+  - Performance label
+  - Action link
+
+### 6. Actions Section
+- Full export action panel integrated into flow
+- Compact export also available in sticky top bar
+
+## Component System (Reusable)
+
+Implemented in `src/components/dashboard` and `src/components/ui`:
+
+- `FilterBar`
+- `DashboardSection`
+- `KpiCard`
+- `AnalyticsChartCard`
+- `ComparisonTable`
+- `AuthorPerformanceItem`
+- `ArticleRow`
+- `ExportActionBar`
+
+Supporting UI primitives (shadcn-style architecture):
+- `ui/card.jsx`
+- `ui/button.jsx`
+- `ui/badge.jsx`
+- `ui/table.jsx`
+- `ui/skeleton.jsx`
+- `ui/state-block.jsx`
+
+## State Handling Standard
+
+Each major dashboard component supports:
+- `Loading` state (skeleton/placeholder)
+- `Empty` state (contextual guidance)
+- `Error` state (local fallback message)
+
+## Design System
+
+### Color
+- Neutral base: cool grays and white surfaces
+- Primary brand: blue (`--brand-600`)
+- Semantic colors:
+  - Positive: green
+  - Negative: red
+  - Warning: amber
+
+### Typography
+- Page title: strongest visual weight
+- Section title: medium-emphasis anchors
+- KPI value: largest numeric type
+- Labels/meta: subtle utility text
+
+### Spacing
+- 8px scale foundation (`8 / 12 / 16 / 24 / 32`)
+- Increased section spacing for cleaner zone separation
+- Responsive CSS grid for mobile-first behavior
+
+## Before vs After
+
+### Before
+- Flat hierarchy and equal visual weight
+- Stacked layout with weak grouping
+- Comparison insights buried
+- Noisy author cards
+- Recent articles felt like a raw list
+- Export tools detached from workflow
+
+### After
+- Zone-based information architecture
+- High-contrast KPI strip for immediate scan
+- Explicit platform and author comparison views
+- Ranked author performance rows with quality tags
+- Structured article table for decision-making speed
+- Export integrated in both top workflow and actions section
+
+## Key Files Updated
+- `src/App.jsx`
+- `src/index.css`
+- `src/components/PostsPerDayChart.jsx`
+- `src/components/TopAuthorsChart.jsx`
+- `src/components/dashboard/*`
+- `src/components/ui/*`
+
+## Tailwind + shadcn/ui Component Examples
+
+These examples mirror the implemented components in Tailwind + shadcn form.
+
+### KPI Card Example
+```tsx
+import { Card, CardContent } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { TrendingUp } from "lucide-react"
+
+export function KpiCardExample() {
+  return (
+    <Card className="border-slate-200">
+      <CardContent className="p-4">
+        <div className="mb-2 flex items-center justify-between">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Total Articles</p>
+          <Badge className="bg-emerald-50 text-emerald-700 hover:bg-emerald-50">
+            <TrendingUp className="mr-1 h-3.5 w-3.5" /> +8.4%
+          </Badge>
+        </div>
+        <p className="text-3xl font-bold tracking-tight text-slate-900">1,284</p>
+        <p className="mt-1 text-xs text-slate-500">vs previous period</p>
+      </CardContent>
+    </Card>
+  )
+}
+```
+
+### Author Performance Row Example
+```tsx
+import { Badge } from "@/components/ui/badge"
+
+export function AuthorPerformanceItemExample() {
+  return (
+    <button className="w-full rounded-lg border border-slate-200 bg-slate-50 p-3 text-left transition hover:border-blue-300 hover:bg-blue-50">
+      <div className="mb-1 flex items-center justify-between">
+        <p className="font-semibold text-slate-900">Jane Smith</p>
+        <Badge className="bg-blue-50 text-blue-700 hover:bg-blue-50">Strong</Badge>
+      </div>
+      <div className="flex items-center justify-between text-sm text-slate-600">
+        <span>16 posts</span>
+        <span>22% share</span>
+      </div>
+    </button>
+  )
+}
+```
+
+### Article Table Row Example
+```tsx
+import { Badge } from "@/components/ui/badge"
+import { ExternalLink } from "lucide-react"
+
+export function ArticleRowExample() {
+  return (
+    <tr className="border-b border-slate-100">
+      <td className="px-3 py-3 font-medium text-slate-900">Retail Trends in Q2</td>
+      <td className="px-3 py-3 text-slate-600">Jane Smith</td>
+      <td className="px-3 py-3 text-slate-600">amg.biz</td>
+      <td className="px-3 py-3 text-slate-600">Apr 7, 2026</td>
+      <td className="px-3 py-3"><Badge className="bg-emerald-50 text-emerald-700">High</Badge></td>
+      <td className="px-3 py-3">
+        <a href="#" className="inline-flex items-center gap-1 font-medium text-blue-700 hover:text-blue-800">
+          <ExternalLink className="h-3.5 w-3.5" /> View
+        </a>
+      </td>
+    </tr>
+  )
+}
+```
+
+## Run
 ```bash
-cd dashboard
 npm install
-```
-
-### 2. Start Backend Webhook Server
-
-```bash
-cd ..
-python webhook.py
-```
-
-The webhook server will run on `http://localhost:8000`
-
-### 3. Start Dashboard Development Server
-
-In a new terminal:
-
-```bash
-cd dashboard
 npm run dev
 ```
 
-The dashboard will be available at `http://localhost:5173`
-
-## 📦 Project Structure
-
-```
-dashboard/
-├── src/
-│   ├── components/
-│   │   ├── StatsCard.jsx           # Statistics display cards
-│   │   ├── PostsPerDayChart.jsx    # Daily posts bar chart
-│   │   ├── TopAuthorsChart.jsx     # Authors horizontal bar chart
-│   │   ├── TopAuthorsGrid.jsx      # Author cards grid
-│   │   └── RecentArticles.jsx      # Recent articles list
-│   ├── App.jsx                      # Main app component
-│   ├── api.js                       # API client
-│   ├── index.css                    # Styles
-│   └── main.jsx                     # Entry point
-├── public/
-│   └── index.html                   # HTML template
-├── package.json                     # Dependencies
-└── vite.config.js                   # Vite configuration
-```
-
-## 🔌 API Endpoints (Backend)
-
-The dashboard communicates with these API endpoints:
-
-- `GET /api/stats` - Overall statistics (total articles, authors)
-- `GET /api/posts-per-day` - Posts published per day (last 30 days)
-- `GET /api/top-authors` - Top 15 authors by post count
-- `GET /api/recent-articles?limit=20` - Recent articles
-
-All endpoints are already added to `webhook.py`.
-
-## 🎨 Styling
-
-The dashboard features:
-- **Color Scheme**: Purple gradient (from #667eea to #764ba2)
-- **Responsive Grid Layout**: Adapts to different screen sizes
-- **Interactive Cards**: Hover effects and transitions
-- **Mobile Friendly**: Works on all device sizes
-
-## 📊 Data Visualization
-
-### Charts Used
-- **Recharts**: Modern charting library for React
-  - Bar charts for posts per day
-  - Horizontal bar charts for top authors
-  - Responsive and interactive
-
-### Components
-
-1. **StatsCard** - Displays key metrics
-2. **PostsPerDayChart** - Line/bar chart of daily activity
-3. **TopAuthorsChart** - Horizontal bar chart of top authors
-4. **TopAuthorsGrid** - Visual grid of author cards with avatars
-5. **RecentArticles** - List of recently published articles
-
-## 🔧 Configuration
-
-### Backend (webhook.py)
-- Database URL: Set `DATABASE_URL` environment variable
-- Webhook credentials: Set `WEBHOOK_USER` and `WEBHOOK_PASS`
-- Port: Default 8000 (set via `PORT` environment variable)
-
-### Frontend (vite.config.js)
-- API proxy: Configured to proxy `/api` to `http://localhost:8000`
-- Dev port: 5173 (Vite default)
-
-## 🚀 Building for Production
-
-### Build Dashboard
+Build verification:
 ```bash
-cd dashboard
 npm run build
 ```
-
-Creates optimized build in `dashboard/dist/`
-
-### Deploy
-1. Build the React app: `npm run build`
-2. Serve the `dist` folder with a static server
-3. Configure environment variables for the backend
-4. Run the webhook server with production URL
-
-## 📱 Responsive Design
-
-- **Desktop**: Full multi-column layout with large charts
-- **Tablet**: Adapted grid layout
-- **Mobile**: Single column stack with readable charts
-
-## 🐛 Troubleshooting
-
-### Dashboard not loading data
-- Ensure webhook server is running on `http://localhost:8000`
-- Check browser console for CORS errors
-- Verify database connection in webhook server
-
-### No charts displayed
-- Database may be empty - ensure articles have been synced
-- Check that timestamps are valid Unix timestamps (integers)
-
-### Images not loading
-- Author photos require valid image URLs
-- Images fail gracefully if URLs are broken
-
-## 🔐 Security Notes
-
-- The dashboard runs locally during development
-- For production, implement authentication
-- Webhook server uses HTTP Basic Auth
-- Consider adding API rate limiting
-
-## 📚 Dependencies
-
-- **react**: UI library
-- **react-dom**: React DOM rendering
-- **recharts**: Charting library
-- **axios**: HTTP client
-- **vite**: Build tool
-
-## 📄 License
-
-MIT - Feel free to modify and extend!
-
-## 🤝 Support
-
-For issues or questions:
-1. Check the troubleshooting section
-2. Verify database connection
-3. Check webhook server logs
-4. Review browser console for errors
-
----
-
-**Happy Dashboard-ing!** 📊✨

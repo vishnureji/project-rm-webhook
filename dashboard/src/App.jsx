@@ -1,13 +1,86 @@
-import React, { useState, useEffect } from 'react'
-import StatsCard from './components/StatsCard'
+import React, { useEffect, useMemo, useState } from 'react'
+import { AlertTriangle, RefreshCw } from 'lucide-react'
+import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from './components/ui/table'
+import Badge from './components/ui/badge'
+import StateBlock from './components/ui/state-block'
+import KpiCard from './components/dashboard/KpiCard'
 import PostsPerDayChart from './components/PostsPerDayChart'
 import TopAuthorsChart from './components/TopAuthorsChart'
-import TopAuthorsGrid from './components/TopAuthorsGrid'
-import RecentArticles from './components/RecentArticles'
-import WebsiteSelector from './components/WebsiteSelector'
-import DateRangeSelector from './components/DateRangeSelector'
-import ReportExport from './components/ReportExport'
-import { getStats, getPostsPerDay, getTopAuthors, getRecentArticles, getWebsites } from './api'
+import FilterBar from './components/dashboard/FilterBar'
+import DashboardSection from './components/dashboard/DashboardSection'
+import AnalyticsChartCard from './components/dashboard/AnalyticsChartCard'
+import ComparisonTable from './components/dashboard/ComparisonTable'
+import AuthorPerformanceItem from './components/dashboard/AuthorPerformanceItem'
+import ArticleRow from './components/dashboard/ArticleRow'
+import ExportActionBar from './components/dashboard/ExportActionBar'
+import {
+  getStats,
+  getPostsPerDay,
+  getTopAuthors,
+  getRecentArticles,
+  getWebsites,
+} from './api'
+
+function formatRelativeTrend(value) {
+  if (!Number.isFinite(value) || value === 0) {
+    return { value: 0, label: '0%' }
+  }
+
+  const sign = value > 0 ? '+' : ''
+  return {
+    value,
+    label: `${sign}${value.toFixed(1)}%`,
+  }
+}
+
+function computePlatformComparison(articles) {
+  if (!articles?.length) {
+    return []
+  }
+
+  const groups = articles.reduce((acc, article) => {
+    const platform = article.website_name || 'Unknown'
+    if (!acc[platform]) {
+      acc[platform] = {
+        platform,
+        posts: 0,
+        recentWindow: 0,
+        previousWindow: 0,
+      }
+    }
+
+    acc[platform].posts += 1
+
+    if (article.created_ts) {
+      const ageInDays = (Date.now() - article.created_ts * 1000) / (1000 * 60 * 60 * 24)
+      if (ageInDays <= 7) {
+        acc[platform].recentWindow += 1
+      } else if (ageInDays <= 14) {
+        acc[platform].previousWindow += 1
+      }
+    }
+
+    return acc
+  }, {})
+
+  const totalPosts = articles.length
+
+  return Object.values(groups)
+    .map((row) => ({
+      platform: row.platform,
+      posts: row.posts,
+      share: row.posts / totalPosts,
+      momentum: row.recentWindow - row.previousWindow,
+    }))
+    .sort((a, b) => b.posts - a.posts)
+}
+
+function getArticlePerformanceLabel(article, topAuthors) {
+  const authorPostCount = topAuthors?.find((author) => author.name === article.author)?.post_count ?? 0
+  if (authorPostCount >= 10) return 'High'
+  if (authorPostCount >= 4) return 'Medium'
+  return 'Low'
+}
 
 function App() {
   const [selectedWebsite, setSelectedWebsite] = useState(null)
@@ -19,6 +92,7 @@ function App() {
     endDate: new Date().toISOString().split('T')[0],
   })
   const [stats, setStats] = useState(null)
+  const [previousStats, setPreviousStats] = useState(null)
   const [postsPerDay, setPostsPerDay] = useState(null)
   const [topAuthors, setTopAuthors] = useState(null)
   const [recentArticles, setRecentArticles] = useState(null)
@@ -41,15 +115,14 @@ function App() {
     try {
       setError(null)
 
-      // Load websites first if not already loaded
       if (!websites) {
         const websitesData = await getWebsites()
         setWebsites(websitesData)
         setLoading((prev) => ({ ...prev, websites: false }))
       }
 
-      // Load data for selected website with date range
       const statsData = await getStats(selectedWebsite, dateRange.startDate, dateRange.endDate)
+      setPreviousStats(stats)
       setStats(statsData)
       setLoading((prev) => ({ ...prev, stats: false }))
 
@@ -61,14 +134,12 @@ function App() {
       setTopAuthors(authorsData)
       setLoading((prev) => ({ ...prev, topAuthors: false }))
 
-      const articlesData = await getRecentArticles(20, selectedWebsite, dateRange.startDate, dateRange.endDate)
+      const articlesData = await getRecentArticles(50, selectedWebsite, dateRange.startDate, dateRange.endDate)
       setRecentArticles(articlesData)
       setLoading((prev) => ({ ...prev, recentArticles: false }))
     } catch (err) {
       console.error('Error loading dashboard data:', err)
-      setError(
-        'Failed to load dashboard data. Make sure the webhook server is running on http://localhost:8000'
-      )
+      setError('Failed to load dashboard data. Ensure the webhook server is running at http://localhost:8000')
       setLoading({
         websites: false,
         stats: false,
@@ -79,105 +150,240 @@ function App() {
     }
   }
 
+  const articleTrend = useMemo(() => {
+    if (!previousStats?.total_articles || !stats?.total_articles) return null
+    const delta = ((stats.total_articles - previousStats.total_articles) / previousStats.total_articles) * 100
+    return formatRelativeTrend(delta)
+  }, [previousStats, stats])
+
+  const authorTrend = useMemo(() => {
+    if (!previousStats?.total_authors || !stats?.total_authors) return null
+    const delta = ((stats.total_authors - previousStats.total_authors) / previousStats.total_authors) * 100
+    return formatRelativeTrend(delta)
+  }, [previousStats, stats])
+
+  const platformComparisonRows = useMemo(() => computePlatformComparison(recentArticles || []), [recentArticles])
+  const totalAuthorPosts = useMemo(
+    () => (topAuthors || []).reduce((sum, author) => sum + (author.post_count || 0), 0),
+    [topAuthors]
+  )
+
+  const filteredArticles = useMemo(() => {
+    if (!selectedAuthor) return recentArticles || []
+    return (recentArticles || []).filter((article) => article.author === selectedAuthor.name)
+  }, [selectedAuthor, recentArticles])
+
   return (
-    <div className="container">
-      <div className="header">
-        <h1>Post Analytics Dashboard</h1>
-        <p>Real-time insights into your published content</p>
-      </div>
-
-      {error && (
-        <div className="error-message">
-          <strong>❌ Error:</strong> {error}
+    <div className="dashboard-app">
+      <header className="dashboard-page-header">
+        <div>
+          <p className="eyebrow">Post Analytics Dashboard</p>
+          <h1>Content Performance Console</h1>
+          <p className="subtitle">Scan insights, compare platforms, and evaluate author productivity in one workspace.</p>
         </div>
-      )}
+        <div className="refresh-note">
+          <RefreshCw size={14} /> Auto-refresh every 30 seconds
+        </div>
+      </header>
 
-      <div className="controls-section">
-        <WebsiteSelector
-          websites={websites}
-          selectedWebsite={selectedWebsite}
-          onSelect={setSelectedWebsite}
-          isLoading={loading.websites}
-        />
+      <FilterBar
+        websites={websites}
+        selectedWebsite={selectedWebsite}
+        onWebsiteChange={setSelectedWebsite}
+        dateRange={dateRange}
+        onDateRangeChange={setDateRange}
+        isLoading={loading.websites}
+        rightSlot={
+          <ExportActionBar
+            websites={websites}
+            selectedWebsite={selectedWebsite}
+            dateRange={dateRange}
+            compact
+            error={error}
+          />
+        }
+      />
 
-        <DateRangeSelector
-          dateRange={dateRange}
-          onDateRangeChange={setDateRange}
-          isLoading={Object.values(loading).some(l => l)}
-        />
-      </div>
+      {error ? (
+        <div className="global-error">
+          <AlertTriangle size={16} />
+          <span>{error}</span>
+        </div>
+      ) : null}
 
-      <div className="dashboard-grid">
-        <StatsCard
-          title="Total Articles"
-          value={stats?.total_articles}
-          isLoading={loading.stats}
-        />
-        <StatsCard
-          title="Total Authors"
-          value={stats?.total_authors}
-          isLoading={loading.stats}
-        />
-        <StatsCard
-          title="Last Updated"
-          value={
-            stats?.latest_article_ts
-              ? new Date(stats.latest_article_ts * 1000).toLocaleDateString()
-              : 'N/A'
-          }
-          isLoading={loading.stats}
-        />
-      </div>
+      <DashboardSection
+        title="Insight Strip"
+        description="Critical KPIs with fast trend context for this filter scope."
+      >
+        <div className="insight-strip">
+          <KpiCard
+            title="Total Articles"
+            value={stats?.total_articles ?? 0}
+            trend={articleTrend}
+            variant="primary"
+            context="vs previous refresh"
+            isLoading={loading.stats}
+            isEmpty={!loading.stats && !stats}
+            error={error}
+          />
+          <KpiCard
+            title="Active Authors"
+            value={stats?.total_authors ?? 0}
+            trend={authorTrend}
+            variant="neutral"
+            context="vs previous refresh"
+            isLoading={loading.stats}
+            isEmpty={!loading.stats && !stats}
+            error={error}
+          />
+          <KpiCard
+            title="Last Updated"
+            value={
+              stats?.latest_article_ts
+                ? new Date(stats.latest_article_ts * 1000).toLocaleString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })
+                : 'N/A'
+            }
+            trend={stats?.latest_article_ts ? { value: 1, label: 'Live' } : null}
+            variant="warning"
+            context="Most recent article timestamp"
+            isLoading={loading.stats}
+            isEmpty={!loading.stats && !stats}
+            error={error}
+          />
+        </div>
+      </DashboardSection>
 
-      <div className="dashboard-grid">
-        <PostsPerDayChart
-          data={postsPerDay}
-          isLoading={loading.postsPerDay}
-        />
-        <TopAuthorsChart
-          data={topAuthors}
-          isLoading={loading.topAuthors}
-          selectedAuthorId={selectedAuthor?.author_id}
-          onAuthorSelect={setSelectedAuthor}
-        />
-      </div>
+      <DashboardSection
+        title="Primary Analytics"
+        description="Daily publication trend and platform comparison to spot where output is concentrated."
+      >
+        <div className="primary-analytics-grid">
+          <PostsPerDayChart data={postsPerDay} isLoading={loading.postsPerDay} error={error} />
 
-      <div className="dashboard-grid">
-        <div style={{ gridColumn: 'span 1' }}>
-          <TopAuthorsGrid
+          <AnalyticsChartCard
+            title="Platform Comparison"
+            description="Cross-platform share and short-window momentum from recent publications."
+            isLoading={loading.recentArticles}
+            isEmpty={!loading.recentArticles && platformComparisonRows.length === 0}
+            error={error}
+          >
+            <ComparisonTable rows={platformComparisonRows} isLoading={false} error={null} />
+          </AnalyticsChartCard>
+        </div>
+      </DashboardSection>
+
+      <DashboardSection
+        title="Secondary Insights"
+        description="Author-level comparison with direct selection for article drill-down."
+      >
+        <div className="secondary-grid">
+          <TopAuthorsChart
             data={topAuthors}
             isLoading={loading.topAuthors}
             selectedAuthorId={selectedAuthor?.author_id}
             onAuthorSelect={setSelectedAuthor}
+            error={error}
           />
-        </div>
-      </div>
 
-      <div className="dashboard-grid">
-        <div style={{ gridColumn: 'span 1' }}>
-          <RecentArticles
-            data={recentArticles}
-            isLoading={loading.recentArticles}
-            selectedAuthor={selectedAuthor}
-            onClearAuthorFilter={() => setSelectedAuthor(null)}
-          />
+          <AnalyticsChartCard
+            title="Author Performance"
+            description="Ranked contribution list with quality tags and portfolio share."
+            isLoading={loading.topAuthors}
+            isEmpty={!loading.topAuthors && (!topAuthors || topAuthors.length === 0)}
+            error={error}
+          >
+            <div className="author-performance-list">
+              {(topAuthors || []).slice(0, 8).map((author, index) => (
+                <AuthorPerformanceItem
+                  key={author.author_id}
+                  author={author}
+                  rank={index + 1}
+                  totalPosts={totalAuthorPosts}
+                  selected={selectedAuthor?.author_id === author.author_id}
+                  onSelect={() => setSelectedAuthor({ author_id: author.author_id, name: author.name })}
+                />
+              ))}
+            </div>
+          </AnalyticsChartCard>
         </div>
-      </div>
+      </DashboardSection>
 
-      <div className="dashboard-grid">
-        <div style={{ gridColumn: 'span 1' }}>
-          <ReportExport
-            websites={websites}
-            dateRange={dateRange}
-            selectedWebsite={selectedWebsite}
-          />
+      <DashboardSection
+        title="Recent Content"
+        description="Structured list for quick scanning across title, author, platform, and performance signal."
+        action={
+          selectedAuthor ? (
+            <button className="clear-filter" onClick={() => setSelectedAuthor(null)}>
+              Clear author filter ({selectedAuthor.name})
+            </button>
+          ) : null
+        }
+      >
+        <div className="recent-content-card">
+          {loading.recentArticles ? (
+            <StateBlock type="loading" title="Loading articles" description="Compiling latest content records..." />
+          ) : filteredArticles.length === 0 ? (
+            <StateBlock
+              type="empty"
+              title="No recent articles"
+              description={selectedAuthor ? `No results for ${selectedAuthor.name}.` : 'No articles found for these filters.'}
+            />
+          ) : (
+            <div className="article-table-shell">
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableHeaderCell>Title</TableHeaderCell>
+                    <TableHeaderCell>Author</TableHeaderCell>
+                    <TableHeaderCell>Platform</TableHeaderCell>
+                    <TableHeaderCell>Date</TableHeaderCell>
+                    <TableHeaderCell>Performance</TableHeaderCell>
+                    <TableHeaderCell>Action</TableHeaderCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {filteredArticles.slice(0, 20).map((article) => (
+                    <ArticleRow
+                      key={article.post_id}
+                      article={article}
+                      scoreLabel={getArticlePerformanceLabel(article, topAuthors || [])}
+                    />
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </div>
-      </div>
+      </DashboardSection>
 
-      <div className="footer">
-        <p>Dashboard auto-refreshes every 30 seconds</p>
-        <p>amg.biz</p>
-      </div>
+      <DashboardSection
+        title="Actions"
+        description="Export reports without losing dashboard context."
+      >
+        <ExportActionBar
+          websites={websites}
+          selectedWebsite={selectedWebsite}
+          dateRange={dateRange}
+          error={error}
+        />
+      </DashboardSection>
+
+      <footer className="dashboard-footer">
+        <Badge variant="neutral">amg.biz</Badge>
+        <Table>
+          <TableBody>
+            <TableRow>
+              <TableCell>Selected Website</TableCell>
+              <TableCell>{selectedWebsite || 'All Websites'}</TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
+      </footer>
     </div>
   )
 }

@@ -1,5 +1,5 @@
 import React from 'react'
-import { FiBarChart2 } from 'react-icons/fi'
+import { BarChart3 } from 'lucide-react'
 import {
   BarChart,
   Bar,
@@ -7,45 +7,40 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
 } from 'recharts'
+import AnalyticsChartCard from './dashboard/AnalyticsChartCard'
 
-export default function PostsPerDayChart({ data, isLoading }) {
+export default function PostsPerDayChart({ data, isLoading, error }) {
   const chartData = [...(data || [])].reverse()
 
   return (
-    <div className="card chart-card">
-      <h3 className="chart-title"><FiBarChart2 style={{display: 'inline', marginRight: '8px'}} /> Posts Published Per Day</h3>
-      {isLoading ? (
-        <div className="spinner">Loading chart data...</div>
-      ) : chartData.length === 0 ? (
-        <div className="spinner">No data available</div>
-      ) : (
-        <ResponsiveContainer width="100%" height={350}>
+    <AnalyticsChartCard
+      className="primary-chart-card"
+      title="Posts Published Over Time"
+      description="Daily output trend for the selected site and date range."
+      action={<BarChart3 size={16} />}
+      isLoading={isLoading}
+      isEmpty={!isLoading && chartData.length === 0}
+      error={error}
+    >
+      <div className="chart-area">
+        <ResponsiveContainer width="100%" height={320}>
           <BarChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-            <XAxis dataKey="date" stroke="#666" style={{ fontSize: '0.85rem' }} />
-            <YAxis stroke="#666" style={{ fontSize: '0.85rem' }} />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" />
+            <XAxis dataKey="date" stroke="var(--text-muted)" tick={{ fontSize: 12 }} />
+            <YAxis stroke="var(--text-muted)" tick={{ fontSize: 12 }} />
             <Tooltip
               contentStyle={{
-                background: 'rgba(255, 255, 255, 0.95)',
-                border: '1px solid #ccc',
-                borderRadius: '8px',
-                padding: '10px',
+                border: '1px solid var(--border)',
+                borderRadius: 10,
+                backgroundColor: 'var(--surface-elevated)',
               }}
-              cursor={{ fill: 'rgba(102, 126, 234, 0.1)' }}
             />
-            <Legend />
-            <Bar
-              dataKey="count"
-              fill="#667eea"
-              name="Posts"
-              radius={[8, 8, 0, 0]}
-            />
+            <Bar dataKey="count" fill="var(--brand-600)" radius={[8, 8, 0, 0]} name="Posts" />
           </BarChart>
         </ResponsiveContainer>
-      )}
-    </div>
+      </div>
+    </AnalyticsChartCard>
   )
 }
