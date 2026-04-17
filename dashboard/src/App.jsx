@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
 import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from './components/ui/table'
 import Badge from './components/ui/badge'
@@ -105,13 +105,7 @@ function App() {
   })
   const [error, setError] = useState(null)
 
-  useEffect(() => {
-    loadDashboardData()
-    const interval = setInterval(loadDashboardData, 30000)
-    return () => clearInterval(interval)
-  }, [selectedWebsite, dateRange])
-
-  const loadDashboardData = async () => {
+  const loadDashboardData = useCallback(async () => {
     try {
       setError(null)
 
@@ -148,7 +142,13 @@ function App() {
         recentArticles: false,
       })
     }
-  }
+  }, [selectedWebsite, dateRange, websites, stats])
+
+  useEffect(() => {
+    loadDashboardData()
+    const interval = setInterval(loadDashboardData, 30000)
+    return () => clearInterval(interval)
+  }, [loadDashboardData])
 
   const articleTrend = useMemo(() => {
     if (!previousStats?.total_articles || !stats?.total_articles) return null
