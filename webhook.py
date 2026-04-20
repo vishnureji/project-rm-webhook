@@ -231,18 +231,23 @@ def get_ga_page_metrics(start_date: str, end_date: str, page_path: str, website_
     try:
         logging.info(f"Fetching GA page metrics for path: {page_path}, property: {ga_property_id}")
         
-        # Create filter for specific page path
-        from google.analytics.data_v1beta.types import FilterExpression, Filter
+        # Create proper filter for specific page path using StringFilter
+        from google.analytics.data_v1beta.types import FilterExpression, StringFilter
+        
         page_filter = FilterExpression(
-            filter=Filter(
+            filter=StringFilter(
                 field_name="pagePath",
-                value=page_path
+                value=page_path,
+                match_type=1  # EXACT match (0=UNSPECIFIED, 1=EXACT, 2=BEGINS_WITH, 3=ENDS_WITH, 4=CONTAINS, 5=FULL_REGEXP)
             )
         )
         
         request = RunReportRequest(
             property=f"properties/{ga_property_id}",
             date_ranges=[{"start_date": start_date, "end_date": end_date}],
+            dimensions=[
+                {"name": "pagePath"}  # Include pagePath as dimension for filtering
+            ],
             metrics=[
                 {"name": "activeUsers"},
                 {"name": "screenPageViews"},
