@@ -48,4 +48,28 @@ export const getRecentArticles = async (limit = 20, websiteId = null, startDate 
   return response.data
 }
 
+// --- Google Analytics Metrics ---
+export const getGAMetrics = async (startDate = null, endDate = null, websiteId = null) => {
+  const params = {}
+  if (startDate) params.start_date = startDate
+  if (endDate) params.end_date = endDate
+  if (websiteId) params.website_id = websiteId
+  const response = await api.get('/ga-metrics', { params })
+  return response.data
+}
+
+export const getGAComparison = async (startDate = null, endDate = null, includePrevious = true, websiteId = null) => {
+  const params = { previous_period: includePrevious }
+  if (startDate) params.start_date = startDate
+  if (endDate) params.end_date = endDate
+  if (websiteId) params.website_id = websiteId
+  const response = await api.get('/ga-comparison', { params })
+  return response.data
+}
+
+export const getGAProperties = async () => {
+  const response = await api.get('/ga-properties')
+  return response.data
+}
+
 export default api

@@ -9,6 +9,9 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 from urllib.parse import urlparse
+from google.analytics.data_v1beta import BetaAnalyticsDataClient
+from google.analytics.data_v1beta.types import RunReportRequest
+from google.auth import load_credentials_from_dict
 
 # --- LOGGING CONFIGURATION ---
 logging.basicConfig(
@@ -31,6 +34,135 @@ try:
     WEBSITE_MAPPING = json_module.loads(WEBSITE_MAPPING)
 except:
     WEBSITE_MAPPING = {}
+
+# --- GOOGLE ANALYTICS 4 CONFIGURATION ---
+GOOGLE_ANALYTICS_CREDENTIALS = os.getenv("GOOGLE_ANALYTICS_CREDENTIALS")
+
+# Parse single property ID (legacy support) or multiple properties mapping
+GOOGLE_ANALYTICS_PROPERTY_ID = os.getenv("GOOGLE_ANALYTICS_PROPERTY_ID")  # Single property (legacy)
+GA_PROPERTIES_MAPPING = os.getenv("GA_PROPERTIES_MAPPING", "{}")  # Multi-property: {"website-id": "property-123456", ...}
+
+try:
+    GA_PROPERTIES_MAPPING = json.loads(GA_PROPERTIES_MAPPING)
+except:
+    GA_PROPERTIES_MAPPING = {}
+
+# If single property is set but no mapping exists, use it as default
+if GOOGLE_ANALYTICS_PROPERTY_ID and not GA_PROPERTIES_MAPPING:
+    GA_PROPERTIES_MAPPING = {"default": GOOGLE_ANALYTICS_PROPERTY_ID}
+    logging.info(f"Using single GA property: {GOOGLE_ANALYTICS_PROPERTY_ID}")
+elif GA_PROPERTIES_MAPPING:
+    logging.info(f"Loaded GA properties mapping for {len(GA_PROPERTIES_MAPPING)} website(s)")
+
+# Initialize GA4 client
+ga_client = None
+if GOOGLE_ANALYTICS_CREDENTIALS and GA_PROPERTIES_MAPPING:
+    try:
+        # Parse credentials from JSON string or file path
+        if GOOGLE_ANALYTICS_CREDENTIALS.startswith('{'):
+            creds_dict = json.loads(GOOGLE_ANALYTICS_CREDENTIALS)
+        else:
+            with open(GOOGLE_ANALYTICS_CREDENTIALS, 'r') as f:
+                creds_dict = json.load(f)
+        
+        credentials, _ = load_credentials_from_dict(creds_dict)
+        ga_client = BetaAnalyticsDataClient(credentials=credentials)
+        logging.info("Google Analytics 4 client initialized successfully")
+    except Exception as e:
+        logging.warning(f"Failed to initialize GA4 client: {str(e)}")
+        ga_client = None
+else:
+    logging.warning("Google Analytics credentials not configured. GA metrics will not be available.")
+
+
+def get_ga_metrics(start_date: str, end_date: str, website_id: str = None, property_id: str = None) -> dict:
+    """
+    Fetch Google Analytics metrics: unique visitors, page views, and average duration.
+    
+    Args:
+        start_date: Date string in format 'YYYY-MM-DD'
+        end_date: Date string in format 'YYYY-MM-DD'
+        website_id: Website ID to lookup property ID from mapping
+        property_id: Direct GA4 property ID (overrides website_id lookup)
+    
+    Returns:
+        Dictionary with metrics or empty dict if GA4 not configured
+    """
+    if not ga_client:
+        return {
+            "users": 0,
+            "page_views": 0,
+            "avg_duration": 0,
+            "error": "Google Analytics client not initialized"
+        }
+    
+    # Determine which property ID to use
+    if property_id:
+        # Use directly provided property ID
+        ga_property_id = property_id
+    elif website_id:
+        # Look up property ID from website mapping
+        ga_property_id = GA_PROPERTIES_MAPPING.get(website_id)
+        if not ga_property_id:
+            return {
+                "users": 0,
+                "page_views": 0,
+                "avg_duration": 0,
+                "error": f"Google Analytics property not configured for website: {website_id}"
+            }
+    elif GA_PROPERTIES_MAPPING:
+        # Use default property if available
+        ga_property_id = GA_PROPERTIES_MAPPING.get("default")
+        if not ga_property_id:
+            # Use first available property
+            ga_property_id = list(GA_PROPERTIES_MAPPING.values())[0]
+    else:
+        return {
+            "users": 0,
+            "page_views": 0,
+            "avg_duration": 0,
+            "error": "No Google Analytics properties configured"
+        }
+    
+    try:
+        request = RunReportRequest(
+            property=f"properties/{ga_property_id}",
+            date_ranges=[{"start_date": start_date, "end_date": end_date}],
+            metrics=[
+                {"name": "activeUsers"},  # Unique Users
+                {"name": "screenPageViews"},  # Page Views
+                {"name": "averageSessionDuration"},  # Average Duration in seconds
+            ],
+        )
+        
+        response = ga_client.run_report(request)
+        
+        if response.rows:
+            row = response.rows[0]
+            metrics = row.metric_values
+            return {
+                "users": int(metrics[0].value),
+                "page_views": int(metrics[1].value),
+                "avg_duration": float(metrics[2].value),
+                "property_id": ga_property_id,
+                "website_id": website_id,
+            }
+        else:
+            return {
+                "users": 0,
+                "page_views": 0,
+                "avg_duration": 0,
+                "property_id": ga_property_id,
+                "website_id": website_id,
+            }
+    except Exception as e:
+        logging.error(f"Error fetching GA metrics for property {ga_property_id}: {str(e)}")
+        return {
+            "users": 0,
+            "page_views": 0,
+            "avg_duration": 0,
+            "error": str(e)
+        }
 
 
 def authenticate(credentials: HTTPBasicCredentials = Depends(security)):
@@ -613,6 +745,116 @@ if dashboard_dist.exists():
     app.mount("/", StaticFiles(directory=str(dashboard_dist), html=True), name="static")
 else:
     logging.warning(f"Dashboard dist not found at {dashboard_dist}")
+
+
+
+
+@app.get("/api/ga-metrics")
+async def get_ga_metrics_endpoint(website_id: str = None, start_date: str = None, end_date: str = None):
+    """Get Google Analytics metrics for a specific website or all websites"""
+    try:
+        # Default to last 30 days if not specified
+        if not end_date:
+            end_date = datetime.now().strftime('%Y-%m-%d')
+        if not start_date:
+            start_date = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+        
+        metrics = get_ga_metrics(start_date, end_date, website_id=website_id)
+        return {
+            "start_date": start_date,
+            "end_date": end_date,
+            "website_id": website_id,
+            "metrics": metrics
+        }
+    except Exception as e:
+        logging.error(f"Error in GA metrics endpoint: {str(e)}")
+        return {
+            "error": "Failed to fetch Google Analytics metrics",
+            "detail": str(e)
+        }
+
+
+@app.get("/api/ga-comparison")
+async def get_ga_comparison(website_id: str = None, start_date: str = None, end_date: str = None, previous_period: bool = True):
+    """Get Google Analytics metrics with comparison to previous period for a specific website"""
+    try:
+        if not end_date:
+            end_date = datetime.now().strftime('%Y-%m-%d')
+        if not start_date:
+            start_date = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+        
+        # Current period metrics
+        current_metrics = get_ga_metrics(start_date, end_date, website_id=website_id)
+        
+        # Previous period metrics (if requested)
+        previous_metrics = None
+        if previous_period:
+            start_dt = datetime.strptime(start_date, '%Y-%m-%d')
+            end_dt = datetime.strptime(end_date, '%Y-%m-%d')
+            period_days = (end_dt - start_dt).days + 1
+            
+            prev_end_date = start_date
+            prev_start_date = (start_dt - timedelta(days=period_days)).strftime('%Y-%m-%d')
+            
+            previous_metrics = get_ga_metrics(prev_start_date, prev_end_date, website_id=website_id)
+        
+        # Calculate trends
+        trends = {}
+        if previous_metrics and 'error' not in previous_metrics:
+            if previous_metrics['users'] > 0:
+                trends['users_trend'] = ((current_metrics['users'] - previous_metrics['users']) / previous_metrics['users']) * 100
+            if previous_metrics['page_views'] > 0:
+                trends['page_views_trend'] = ((current_metrics['page_views'] - previous_metrics['page_views']) / previous_metrics['page_views']) * 100
+            if previous_metrics['avg_duration'] > 0:
+                trends['duration_trend'] = ((current_metrics['avg_duration'] - previous_metrics['avg_duration']) / previous_metrics['avg_duration']) * 100
+        
+        return {
+            "current": {
+                "start_date": start_date,
+                "end_date": end_date,
+                "website_id": website_id,
+                "metrics": current_metrics
+            },
+            "previous": {
+                "metrics": previous_metrics
+            } if previous_metrics else None,
+            "trends": trends
+        }
+    except Exception as e:
+        logging.error(f"Error in GA comparison endpoint: {str(e)}")
+        return {
+            "error": "Failed to fetch Google Analytics comparison data",
+            "detail": str(e)
+        }
+
+
+@app.get("/api/ga-properties")
+async def get_ga_properties():
+    """Get list of all configured Google Analytics properties"""
+    try:
+        properties_list = []
+        for website_id, property_id in GA_PROPERTIES_MAPPING.items():
+            if website_id != "default":
+                # Get website name from WEBSITE_MAPPING if available
+                website_name = WEBSITE_MAPPING.get(website_id, website_id)
+                properties_list.append({
+                    "website_id": website_id,
+                    "website_name": website_name,
+                    "property_id": property_id
+                })
+        
+        return {
+            "properties": properties_list,
+            "total": len(properties_list),
+            "has_ga_configured": ga_client is not None
+        }
+    except Exception as e:
+        logging.error(f"Error fetching GA properties: {str(e)}")
+        return {
+            "properties": [],
+            "error": str(e)
+        }
+
 
 
 if __name__ == "__main__":

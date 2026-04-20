@@ -4,6 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } fro
 import Badge from './components/ui/badge'
 import StateBlock from './components/ui/state-block'
 import KpiCard from './components/dashboard/KpiCard'
+import GoogleAnalyticsCard from './components/dashboard/GoogleAnalyticsCard'
 import PostsPerDayChart from './components/PostsPerDayChart'
 import TopAuthorsChart from './components/TopAuthorsChart'
 import FilterBar from './components/dashboard/FilterBar'
@@ -19,6 +20,8 @@ import {
   getTopAuthors,
   getRecentArticles,
   getWebsites,
+  getGAComparison,
+  getGAProperties,
 } from './api'
 
 function formatRelativeTrend(value) {
@@ -96,12 +99,15 @@ function App() {
   const [postsPerDay, setPostsPerDay] = useState(null)
   const [topAuthors, setTopAuthors] = useState(null)
   const [recentArticles, setRecentArticles] = useState(null)
+  const [gaMetrics, setGaMetrics] = useState(null)
+  const [previousGaMetrics, setPreviousGaMetrics] = useState(null)
   const [loading, setLoading] = useState({
     websites: true,
     stats: true,
     postsPerDay: true,
     topAuthors: true,
     recentArticles: true,
+    gaMetrics: true,
   })
   const [error, setError] = useState(null)
 
@@ -131,6 +137,19 @@ function App() {
       const articlesData = await getRecentArticles(50, selectedWebsite, dateRange.startDate, dateRange.endDate)
       setRecentArticles(articlesData)
       setLoading((prev) => ({ ...prev, recentArticles: false }))
+
+      // Fetch Google Analytics metrics
+      try {
+        const gaData = await getGAComparison(dateRange.startDate, dateRange.endDate, true, selectedWebsite)
+        if (gaData.current) {
+          setPreviousGaMetrics(gaMetrics)
+          setGaMetrics(gaData.current.metrics)
+        }
+        setLoading((prev) => ({ ...prev, gaMetrics: false }))
+      } catch (gaError) {
+        console.error('Error loading GA metrics:', gaError)
+        setLoading((prev) => ({ ...prev, gaMetrics: false }))
+      }
     } catch (err) {
       console.error('Error loading dashboard data:', err)
       setError('Failed to load dashboard data. Ensure the webhook server is running at http://localhost:8000')
@@ -140,9 +159,10 @@ function App() {
         postsPerDay: false,
         topAuthors: false,
         recentArticles: false,
+        gaMetrics: false,
       })
     }
-  }, [selectedWebsite, dateRange, websites, stats])
+  }, [selectedWebsite, dateRange, websites, stats, gaMetrics])
 
   useEffect(() => {
     loadDashboardData()
@@ -256,6 +276,20 @@ function App() {
             error={error}
           />
         </div>
+      </DashboardSection>
+
+      <DashboardSection
+        title="Google Analytics Insights"
+        description="Real-time website metrics: visitor engagement, page activity, and session duration."
+      >
+        <GoogleAnalyticsCard
+          title="Website Performance (Google Analytics)"
+          metrics={gaMetrics}
+          previousMetrics={previousGaMetrics}
+          isLoading={loading.gaMetrics}
+          error={gaMetrics?.error}
+          dateRange={dateRange}
+        />
       </DashboardSection>
 
       <DashboardSection
