@@ -58,20 +58,32 @@ elif GA_PROPERTIES_MAPPING:
 ga_client = None
 if GOOGLE_ANALYTICS_CREDENTIALS and GA_PROPERTIES_MAPPING:
     try:
+        logging.info(f"Attempting to load GA credentials (type: {type(GOOGLE_ANALYTICS_CREDENTIALS).__name__}, length: {len(GOOGLE_ANALYTICS_CREDENTIALS)})")
+        
         # Parse credentials from JSON string or file path
         if GOOGLE_ANALYTICS_CREDENTIALS.startswith('{'):
+            logging.info("Loading credentials from JSON string")
             creds_dict = json.loads(GOOGLE_ANALYTICS_CREDENTIALS)
+            logging.info(f"Parsed JSON with keys: {list(creds_dict.keys())}")
         else:
+            logging.info(f"Loading credentials from file: {GOOGLE_ANALYTICS_CREDENTIALS}")
             with open(GOOGLE_ANALYTICS_CREDENTIALS, 'r') as f:
                 creds_dict = json.load(f)
+            logging.info(f"Loaded JSON file with keys: {list(creds_dict.keys())}")
         
         credentials, _ = load_credentials_from_dict(creds_dict)
+        logging.info(f"Created credentials object: {credentials}")
+        
         ga_client = BetaAnalyticsDataClient(credentials=credentials)
         logging.info("Google Analytics 4 client initialized successfully")
     except Exception as e:
-        logging.warning(f"Failed to initialize GA4 client: {str(e)}")
+        logging.error(f"Failed to initialize GA4 client: {str(e)}", exc_info=True)
         ga_client = None
 else:
+    if not GOOGLE_ANALYTICS_CREDENTIALS:
+        logging.warning("GOOGLE_ANALYTICS_CREDENTIALS environment variable not set")
+    if not GA_PROPERTIES_MAPPING:
+        logging.warning("GA_PROPERTIES_MAPPING is empty")
     logging.warning("Google Analytics credentials not configured. GA metrics will not be available.")
 
 
@@ -125,6 +137,7 @@ def get_ga_metrics(start_date: str, end_date: str, website_id: str = None, prope
         }
     
     try:
+        logging.info(f"Fetching GA metrics for property {ga_property_id}, website: {website_id}, dates: {start_date} to {end_date}")
         request = RunReportRequest(
             property=f"properties/{ga_property_id}",
             date_ranges=[{"start_date": start_date, "end_date": end_date}],
@@ -136,18 +149,22 @@ def get_ga_metrics(start_date: str, end_date: str, website_id: str = None, prope
         )
         
         response = ga_client.run_report(request)
+        logging.info(f"GA API response received with {len(response.rows)} rows")
         
         if response.rows:
             row = response.rows[0]
             metrics = row.metric_values
-            return {
+            result = {
                 "users": int(metrics[0].value),
                 "page_views": int(metrics[1].value),
                 "avg_duration": float(metrics[2].value),
                 "property_id": ga_property_id,
                 "website_id": website_id,
             }
+            logging.info(f"GA metrics fetched successfully: {result}")
+            return result
         else:
+            logging.warning(f"No data rows in GA response for property {ga_property_id}")
             return {
                 "users": 0,
                 "page_views": 0,
@@ -156,7 +173,7 @@ def get_ga_metrics(start_date: str, end_date: str, website_id: str = None, prope
                 "website_id": website_id,
             }
     except Exception as e:
-        logging.error(f"Error fetching GA metrics for property {ga_property_id}: {str(e)}")
+        logging.error(f"Error fetching GA metrics for property {ga_property_id}: {str(e)}", exc_info=True)
         return {
             "users": 0,
             "page_views": 0,
