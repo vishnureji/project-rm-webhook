@@ -1,7 +1,8 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { ExternalLink, Users, Eye, Clock } from 'lucide-react'
 import Badge from '../ui/badge'
 import { TableCell, TableRow } from '../ui/table'
+import { getGAPageMetrics } from '../../api'
 
 function formatDate(timestamp) {
   if (!timestamp) return 'N/A'
@@ -31,9 +32,58 @@ function formatDuration(seconds) {
   }
 }
 
-export default function ArticleRow({ article, scoreLabel, gaMetrics }) {
+function extractPagePath(url) {
+  // Extract path from full URL (e.g., 'https://example.com/article' -> '/article')
+  if (!url) return null
+  try {
+    const urlObj = new URL(url)
+    return urlObj.pathname
+  } catch {
+    return null
+  }
+}
+
+export default function ArticleRow({ article, scoreLabel, websiteId, startDate, endDate }) {
   const performanceVariant =
     scoreLabel === 'High' ? 'success' : scoreLabel === 'Medium' ? 'warning' : 'neutral'
+  
+  const [pageMetrics, setPageMetrics] = useState(null)
+  const [isLoading, setIsLoading] = useState(false)
+  
+  // Fetch page-specific GA metrics when component mounts or dates change
+  useEffect(() => {
+    if (!article?.post_url || !websiteId) {
+      setPageMetrics(null)
+      return
+    }
+    
+    const loadPageMetrics = async () => {
+      try {
+        setIsLoading(true)
+        const pagePath = extractPagePath(article.post_url)
+        
+        if (!pagePath) {
+          setPageMetrics(null)
+          return
+        }
+        
+        const response = await getGAPageMetrics(pagePath, websiteId, startDate, endDate)
+        
+        if (response.metrics && !response.metrics.error) {
+          setPageMetrics(response.metrics)
+        } else {
+          setPageMetrics(null)
+        }
+      } catch (error) {
+        console.error('Error loading page metrics:', error)
+        setPageMetrics(null)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    
+    loadPageMetrics()
+  }, [article?.post_url, websiteId, startDate, endDate])
 
   return (
     <TableRow>
@@ -48,23 +98,29 @@ export default function ArticleRow({ article, scoreLabel, gaMetrics }) {
       <TableCell>
         <Badge variant={performanceVariant}>{scoreLabel}</Badge>
       </TableCell>
-      {/* Google Analytics Metrics */}
+      {/* Google Analytics Metrics - Page Specific */}
       <TableCell>
         <div className="ga-metric-cell">
           <Users size={14} className="ga-icon users" />
-          <span className="ga-value">{gaMetrics?.users ? gaMetrics.users.toLocaleString() : '—'}</span>
+          <span className="ga-value">
+            {isLoading ? '...' : (pageMetrics?.users ? pageMetrics.users.toLocaleString() : '—')}
+          </span>
         </div>
       </TableCell>
       <TableCell>
         <div className="ga-metric-cell">
           <Eye size={14} className="ga-icon pageviews" />
-          <span className="ga-value">{gaMetrics?.page_views ? gaMetrics.page_views.toLocaleString() : '—'}</span>
+          <span className="ga-value">
+            {isLoading ? '...' : (pageMetrics?.page_views ? pageMetrics.page_views.toLocaleString() : '—')}
+          </span>
         </div>
       </TableCell>
       <TableCell>
         <div className="ga-metric-cell">
           <Clock size={14} className="ga-icon duration" />
-          <span className="ga-value">{gaMetrics?.avg_duration ? formatDuration(gaMetrics.avg_duration) : '—'}</span>
+          <span className="ga-value">
+            {isLoading ? '...' : (pageMetrics?.avg_duration ? formatDuration(pageMetrics.avg_duration) : '—')}
+          </span>
         </div>
       </TableCell>
       <TableCell>

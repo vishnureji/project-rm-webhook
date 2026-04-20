@@ -182,6 +182,111 @@ def get_ga_metrics(start_date: str, end_date: str, website_id: str = None, prope
         }
 
 
+def get_ga_page_metrics(start_date: str, end_date: str, page_path: str, website_id: str = None, property_id: str = None) -> dict:
+    """
+    Fetch Google Analytics metrics for a specific page path.
+    
+    Args:
+        start_date: Date string in format 'YYYY-MM-DD'
+        end_date: Date string in format 'YYYY-MM-DD'
+        page_path: The page path to filter by (e.g., '/article-title' or '/news/article')
+        website_id: Website ID to lookup property ID from mapping
+        property_id: Direct GA4 property ID
+    
+    Returns:
+        Dictionary with metrics for the specific page
+    """
+    if not ga_client:
+        return {
+            "users": 0,
+            "page_views": 0,
+            "avg_duration": 0,
+            "error": "Google Analytics client not initialized"
+        }
+    
+    # Determine which property ID to use
+    if property_id:
+        ga_property_id = property_id
+    elif website_id:
+        ga_property_id = GA_PROPERTIES_MAPPING.get(website_id)
+        if not ga_property_id:
+            return {
+                "users": 0,
+                "page_views": 0,
+                "avg_duration": 0,
+                "error": f"Google Analytics property not configured for website: {website_id}"
+            }
+    elif GA_PROPERTIES_MAPPING:
+        ga_property_id = GA_PROPERTIES_MAPPING.get("default")
+        if not ga_property_id:
+            ga_property_id = list(GA_PROPERTIES_MAPPING.values())[0]
+    else:
+        return {
+            "users": 0,
+            "page_views": 0,
+            "avg_duration": 0,
+            "error": "No Google Analytics properties configured"
+        }
+    
+    try:
+        logging.info(f"Fetching GA page metrics for path: {page_path}, property: {ga_property_id}")
+        
+        # Create filter for specific page path
+        from google.analytics.data_v1beta.types import FilterExpression, Filter
+        page_filter = FilterExpression(
+            filter=Filter(
+                field_name="pagePath",
+                value=page_path
+            )
+        )
+        
+        request = RunReportRequest(
+            property=f"properties/{ga_property_id}",
+            date_ranges=[{"start_date": start_date, "end_date": end_date}],
+            metrics=[
+                {"name": "activeUsers"},
+                {"name": "screenPageViews"},
+                {"name": "averageSessionDuration"},
+            ],
+            dimension_filter=page_filter,
+        )
+        
+        response = ga_client.run_report(request)
+        logging.info(f"GA page metrics response: {len(response.rows)} rows for path {page_path}")
+        
+        if response.rows:
+            row = response.rows[0]
+            metrics = row.metric_values
+            result = {
+                "users": int(metrics[0].value),
+                "page_views": int(metrics[1].value),
+                "avg_duration": float(metrics[2].value),
+                "page_path": page_path,
+                "property_id": ga_property_id,
+                "website_id": website_id,
+            }
+            logging.info(f"Page metrics fetched: {result}")
+            return result
+        else:
+            logging.info(f"No GA data for page path: {page_path}")
+            return {
+                "users": 0,
+                "page_views": 0,
+                "avg_duration": 0,
+                "page_path": page_path,
+                "property_id": ga_property_id,
+                "website_id": website_id,
+            }
+    except Exception as e:
+        logging.error(f"Error fetching page metrics for {page_path}: {str(e)}", exc_info=True)
+        return {
+            "users": 0,
+            "page_views": 0,
+            "avg_duration": 0,
+            "error": str(e)
+        }
+
+
 def authenticate(credentials: HTTPBasicCredentials = Depends(security)):
     if not EXPECTED_USER or not EXPECTED_PASS:
         logging.error("Webhook credentials not set in environment variables.")
@@ -860,6 +965,36 @@ async def get_ga_properties():
         return {
             "properties": [],
             "error": str(e)
+        }
+
+
+@app.get("/api/ga-page-metrics")
+async def get_ga_page_metrics_endpoint(page_path: str, website_id: str = None, start_date: str = None, end_date: str = None):
+    """Get Google Analytics metrics for a specific page path"""
+    try:
+        if not end_date:
+            end_date = datetime.now().strftime('%Y-%m-%d')
+        if not start_date:
+            start_date = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+        
+        if not page_path:
+            return {
+                "error": "page_path parameter is required"
+            }
+        
+        metrics = get_ga_page_metrics(start_date, end_date, page_path, website_id=website_id)
+        return {
+            "start_date": start_date,
+            "end_date": end_date,
+            "page_path": page_path,
+            "website_id": website_id,
+            "metrics": metrics
+        }
+    except Exception as e:
+        logging.error(f"Error in GA page metrics endpoint: {str(e)}")
+        return {
+            "error": "Failed to fetch Google Analytics page metrics",
+            "detail": str(e)
         }
 
 

@@ -72,4 +72,13 @@ export const getGAProperties = async () => {
   return response.data
 }
 
+export const getGAPageMetrics = async (pagePath, websiteId = null, startDate = null, endDate = null) => {
+  const params = { page_path: pagePath }
+  if (startDate) params.start_date = startDate
+  if (endDate) params.end_date = endDate
+  if (websiteId) params.website_id = websiteId
+  const response = await api.get('/ga-page-metrics', { params })
+  return response.data
+}
+
 export default api

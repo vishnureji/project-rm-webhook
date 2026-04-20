@@ -422,7 +422,9 @@ function App() {
                       key={article.post_id}
                       article={article}
                       scoreLabel={getArticlePerformanceLabel(article, topAuthors || [])}
-                      gaMetrics={gaMetrics}
+                      websiteId={selectedWebsite}
+                      startDate={dateRange.startDate}
+                      endDate={dateRange.endDate}
                     />
                   ))}
                 </TableBody>
