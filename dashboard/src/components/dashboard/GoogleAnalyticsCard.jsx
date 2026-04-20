@@ -1,5 +1,5 @@
 import React from 'react'
-import { TrendingDown, TrendingUp, Users, Eye, Clock } from 'lucide-react'
+import { Users, Eye, Clock } from 'lucide-react'
 import { Card, CardContent } from '../ui/card'
 import Skeleton from '../ui/skeleton'
 import StateBlock from '../ui/state-block'
@@ -7,7 +7,6 @@ import StateBlock from '../ui/state-block'
 export default function GoogleAnalyticsCard({
   title = 'Google Analytics Metrics',
   metrics = null,
-  previousMetrics = null,
   isLoading = false,
   error = null,
   dateRange = null,
@@ -58,11 +57,6 @@ export default function GoogleAnalyticsCard({
     )
   }
 
-  const calculateTrend = (current, previous) => {
-    if (!previous || previous === 0) return null
-    return ((current - previous) / previous) * 100
-  }
-
   const formatDuration = (seconds) => {
     if (seconds < 60) {
       return `${Math.round(seconds)}s`
@@ -71,26 +65,6 @@ export default function GoogleAnalyticsCard({
     const secs = Math.round(seconds % 60)
     return `${minutes}m ${secs}s`
   }
-
-  const getTrendIndicator = (trend) => {
-    if (!trend) return null
-    const isPositive = trend > 0
-    const sign = isPositive ? '+' : ''
-    return (
-      <div className={`trend-indicator ${isPositive ? 'positive' : 'negative'}`}>
-        {isPositive ? (
-          <TrendingUp size={16} />
-        ) : (
-          <TrendingDown size={16} />
-        )}
-        <span>{sign}{trend.toFixed(1)}%</span>
-      </div>
-    )
-  }
-
-  const usersTrend = calculateTrend(metrics.users, previousMetrics?.users)
-  const pageViewsTrend = calculateTrend(metrics.page_views, previousMetrics?.page_views)
-  const durationTrend = calculateTrend(metrics.avg_duration, previousMetrics?.avg_duration)
 
   return (
     <Card className="ga-card">
@@ -111,15 +85,9 @@ export default function GoogleAnalyticsCard({
               <Users size={24} className="ga-metric-icon users" />
               <div className="ga-metric-label-group">
                 <span className="ga-metric-label">Unique Visitors</span>
-                {usersTrend !== null && getTrendIndicator(usersTrend)}
               </div>
             </div>
             <div className="ga-metric-value">{metrics.users.toLocaleString()}</div>
-            {previousMetrics && (
-              <div className="ga-metric-previous">
-                Previous: {previousMetrics.users.toLocaleString()}
-              </div>
-            )}
           </div>
 
           {/* Page Views */}
@@ -128,15 +96,9 @@ export default function GoogleAnalyticsCard({
               <Eye size={24} className="ga-metric-icon pageviews" />
               <div className="ga-metric-label-group">
                 <span className="ga-metric-label">Page Views</span>
-                {pageViewsTrend !== null && getTrendIndicator(pageViewsTrend)}
               </div>
             </div>
             <div className="ga-metric-value">{metrics.page_views.toLocaleString()}</div>
-            {previousMetrics && (
-              <div className="ga-metric-previous">
-                Previous: {previousMetrics.page_views.toLocaleString()}
-              </div>
-            )}
           </div>
 
           {/* Average Session Duration */}
@@ -145,15 +107,9 @@ export default function GoogleAnalyticsCard({
               <Clock size={24} className="ga-metric-icon duration" />
               <div className="ga-metric-label-group">
                 <span className="ga-metric-label">Avg. Duration</span>
-                {durationTrend !== null && getTrendIndicator(durationTrend)}
               </div>
             </div>
             <div className="ga-metric-value">{formatDuration(metrics.avg_duration)}</div>
-            {previousMetrics && (
-              <div className="ga-metric-previous">
-                Previous: {formatDuration(previousMetrics.avg_duration)}
-              </div>
-            )}
           </div>
         </div>
       </CardContent>
@@ -249,32 +205,6 @@ export default function GoogleAnalyticsCard({
           font-weight: 700;
           color: #1f2937;
           margin: 8px 0;
-        }
-
-        .ga-metric-previous {
-          font-size: 11px;
-          color: #9ca3af;
-          margin-top: 8px;
-        }
-
-        .trend-indicator {
-          display: flex;
-          align-items: center;
-          gap: 4px;
-          font-size: 12px;
-          font-weight: 600;
-          padding: 2px 8px;
-          border-radius: 4px;
-        }
-
-        .trend-indicator.positive {
-          color: #10b981;
-          background-color: rgba(16, 185, 129, 0.1);
-        }
-
-        .trend-indicator.negative {
-          color: #ef4444;
-          background-color: rgba(239, 68, 68, 0.1);
         }
 
         .ga-metric-skeleton {

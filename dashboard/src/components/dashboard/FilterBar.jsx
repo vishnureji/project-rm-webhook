@@ -94,7 +94,7 @@ export default function FilterBar({
                 <option value="all">All Websites</option>
                 {(websites || []).map((website) => (
                   <option key={website.website_id} value={website.website_id}>
-                    {website.website_name} ({website.post_count} posts)
+                    {website.website_name}
                   </option>
                 ))}
               </select>

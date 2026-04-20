@@ -24,6 +24,8 @@ import {
   getGABatchMetrics,
 } from './api'
 
+const ARTICLES_PER_PAGE = 10
+
 function formatRelativeTrend(value) {
   if (!Number.isFinite(value) || value === 0) {
     return { value: 0, label: '0%' }
@@ -87,14 +89,22 @@ function extractPagePath(url) {
   }
 }
 
+function dateToString(date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 function App() {
   const [selectedWebsite, setSelectedWebsite] = useState(null)
   const [selectedAuthor, setSelectedAuthor] = useState(null)
   const [websites, setWebsites] = useState(null)
+  const today = new Date()
   const [dateRange, setDateRange] = useState({
-    preset: '30days',
-    startDate: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0],
-    endDate: new Date().toISOString().split('T')[0],
+    preset: 'today',
+    startDate: dateToString(today),
+    endDate: dateToString(today),
   })
   const [stats, setStats] = useState(null)
   const [previousStats, setPreviousStats] = useState(null)
@@ -104,6 +114,7 @@ function App() {
   const [gaMetrics, setGaMetrics] = useState(null)
   const [previousGaMetrics, setPreviousGaMetrics] = useState(null)
   const [articleGaMetrics, setArticleGaMetrics] = useState({})
+  const [currentPage, setCurrentPage] = useState(1)
   const latestStatsRef = useRef(null)
   const latestRequestIdRef = useRef(0)
   const [loading, setLoading] = useState({
@@ -270,6 +281,22 @@ function App() {
     return (recentArticles || []).filter((article) => article.author === selectedAuthor.name)
   }, [selectedAuthor, recentArticles])
 
+  const totalPages = Math.max(1, Math.ceil(filteredArticles.length / ARTICLES_PER_PAGE))
+  const paginatedArticles = useMemo(() => {
+    const startIndex = (currentPage - 1) * ARTICLES_PER_PAGE
+    return filteredArticles.slice(startIndex, startIndex + ARTICLES_PER_PAGE)
+  }, [currentPage, filteredArticles])
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [selectedAuthor, selectedWebsite, dateRange.startDate, dateRange.endDate])
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages)
+    }
+  }, [currentPage, totalPages])
+
   return (
     <div className="dashboard-app">
       <header className="dashboard-page-header">
@@ -362,7 +389,6 @@ function App() {
         <GoogleAnalyticsCard
           title="Website Performance (Google Analytics)"
           metrics={gaMetrics}
-          previousMetrics={previousGaMetrics}
           isLoading={loading.gaMetrics}
           error={gaMetrics?.error}
           dateRange={dateRange}
@@ -445,44 +471,67 @@ function App() {
               description={selectedAuthor ? `No results for ${selectedAuthor.name}.` : 'No articles found for these filters.'}
             />
           ) : (
-            <div className="article-table-shell">
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableHeaderCell>Title</TableHeaderCell>
-                    <TableHeaderCell>Author</TableHeaderCell>
-                    <TableHeaderCell>Platform</TableHeaderCell>
-                    <TableHeaderCell>Date</TableHeaderCell>
-                    <TableHeaderCell>
-                      <div className="ga-header-cell">
-                        <span>Unique Visitors</span>
-                      </div>
-                    </TableHeaderCell>
-                    <TableHeaderCell>
-                      <div className="ga-header-cell">
-                        <span>Page Views</span>
-                      </div>
-                    </TableHeaderCell>
-                    <TableHeaderCell>
-                      <div className="ga-header-cell">
-                        <span>Avg Duration</span>
-                      </div>
-                    </TableHeaderCell>
-                    <TableHeaderCell>Action</TableHeaderCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {filteredArticles.slice(0, 20).map((article) => (
-                    <ArticleRow
-                      key={article.post_id}
-                      article={article}
-                      pageMetrics={articleGaMetrics[extractPagePath(article.post_url)]}
-                      isLoading={loading.articleMetrics}
-                    />
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+            <>
+              <div className="article-table-shell">
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableHeaderCell>Title</TableHeaderCell>
+                      <TableHeaderCell>Author</TableHeaderCell>
+                      <TableHeaderCell>Platform</TableHeaderCell>
+                      <TableHeaderCell>Date</TableHeaderCell>
+                      <TableHeaderCell>
+                        <div className="ga-header-cell">
+                          <span>Unique Visitors</span>
+                        </div>
+                      </TableHeaderCell>
+                      <TableHeaderCell>
+                        <div className="ga-header-cell">
+                          <span>Page Views</span>
+                        </div>
+                      </TableHeaderCell>
+                      <TableHeaderCell>
+                        <div className="ga-header-cell">
+                          <span>Avg Duration</span>
+                        </div>
+                      </TableHeaderCell>
+                      <TableHeaderCell>Action</TableHeaderCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {paginatedArticles.map((article) => (
+                      <ArticleRow
+                        key={article.post_id}
+                        article={article}
+                        pageMetrics={articleGaMetrics[extractPagePath(article.post_url)]}
+                        isLoading={loading.articleMetrics}
+                      />
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              <div className="table-pagination">
+                <span className="table-pagination-status">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <div className="table-pagination-controls">
+                  <button
+                    className="clear-filter"
+                    onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    Previous
+                  </button>
+                  <button
+                    className="clear-filter"
+                    onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                    disabled={currentPage === totalPages}
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            </>
           )}
         </div>
       </DashboardSection>
