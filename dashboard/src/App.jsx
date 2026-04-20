@@ -115,49 +115,64 @@ function App() {
     try {
       setError(null)
 
-      if (!websites) {
-        const websitesData = await getWebsites()
-        setWebsites(websitesData)
-        setLoading((prev) => ({ ...prev, websites: false }))
+      // Load websites once
+      if (!websites || websites.length === 0) {
+        try {
+          const websitesData = await getWebsites()
+          setWebsites(websitesData)
+          setLoading((prev) => ({ ...prev, websites: false }))
+          // Auto-select first website
+          if (websitesData && websitesData.length > 0 && !selectedWebsite) {
+            setSelectedWebsite(websitesData[0])
+            console.log('Auto-selected first website:', websitesData[0])
+          }
+          return // Exit early to let auto-select trigger next load
+        } catch (err) {
+          console.error('Error loading websites:', err)
+          setLoading((prev) => ({ ...prev, websites: false }))
+        }
       }
 
-      const statsData = await getStats(selectedWebsite, dateRange.startDate, dateRange.endDate)
-      setPreviousStats(stats)
+      // If no website selected, can't continue
+      if (!selectedWebsite) {
+        return
+      }
+
+      // Load other data
+      const [statsData, postsData, authorsData, articlesData] = await Promise.all([
+        getStats(selectedWebsite, dateRange.startDate, dateRange.endDate),
+        getPostsPerDay(selectedWebsite, dateRange.startDate, dateRange.endDate),
+        getTopAuthors(selectedWebsite, dateRange.startDate, dateRange.endDate),
+        getRecentArticles(50, selectedWebsite, dateRange.startDate, dateRange.endDate),
+      ])
+
       setStats(statsData)
       setLoading((prev) => ({ ...prev, stats: false }))
 
-      const postsData = await getPostsPerDay(selectedWebsite, dateRange.startDate, dateRange.endDate)
       setPostsPerDay(postsData)
       setLoading((prev) => ({ ...prev, postsPerDay: false }))
 
-      const authorsData = await getTopAuthors(selectedWebsite, dateRange.startDate, dateRange.endDate)
       setTopAuthors(authorsData)
       setLoading((prev) => ({ ...prev, topAuthors: false }))
 
-      const articlesData = await getRecentArticles(50, selectedWebsite, dateRange.startDate, dateRange.endDate)
       setRecentArticles(articlesData)
       setLoading((prev) => ({ ...prev, recentArticles: false }))
 
-      // Fetch Google Analytics metrics (only if website is selected)
-      if (selectedWebsite) {
-        try {
-          console.log('Fetching GA metrics for website:', selectedWebsite)
-          const gaData = await getGAComparison(dateRange.startDate, dateRange.endDate, true, selectedWebsite)
-          console.log('GA data received:', gaData)
-          if (gaData.current && gaData.current.metrics) {
-            setGaMetrics(gaData.current.metrics)
-          } else if (gaData.error) {
-            console.warn('GA API returned error:', gaData.error)
-            setGaMetrics(null)
-          }
-          setLoading((prev) => ({ ...prev, gaMetrics: false }))
-        } catch (gaError) {
-          console.error('Error loading GA metrics:', gaError)
+      // Fetch Google Analytics metrics
+      try {
+        console.log('Fetching GA metrics for website:', selectedWebsite)
+        const gaData = await getGAComparison(dateRange.startDate, dateRange.endDate, true, selectedWebsite)
+        console.log('GA data received:', gaData)
+        if (gaData && gaData.current && gaData.current.metrics) {
+          setGaMetrics(gaData.current.metrics)
+        } else {
+          console.warn('GA data missing or error:', gaData)
           setGaMetrics(null)
-          setLoading((prev) => ({ ...prev, gaMetrics: false }))
         }
-      } else {
+      } catch (gaError) {
+        console.error('Error loading GA metrics:', gaError)
         setGaMetrics(null)
+      } finally {
         setLoading((prev) => ({ ...prev, gaMetrics: false }))
       }
     } catch (err) {
@@ -172,21 +187,13 @@ function App() {
         gaMetrics: false,
       })
     }
-  }, [selectedWebsite, dateRange, websites, stats])
+  }, [selectedWebsite, dateRange, websites])
 
   useEffect(() => {
     loadDashboardData()
     const interval = setInterval(loadDashboardData, 30000)
     return () => clearInterval(interval)
   }, [loadDashboardData])
-
-  // Auto-select first website when websites are loaded
-  useEffect(() => {
-    if (websites && websites.length > 0 && !selectedWebsite) {
-      setSelectedWebsite(websites[0])
-      console.log('Auto-selected first website:', websites[0])
-    }
-  }, [websites, selectedWebsite])
 
   const articleTrend = useMemo(() => {
     if (!previousStats?.total_articles || !stats?.total_articles) return null
