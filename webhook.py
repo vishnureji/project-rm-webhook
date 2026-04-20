@@ -8,10 +8,11 @@ from fastapi import FastAPI, Request, HTTPException, Depends
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import urlparse, unquote
 from google.analytics.data_v1beta import BetaAnalyticsDataClient
 from google.analytics.data_v1beta.types import RunReportRequest
 from google.auth import load_credentials_from_dict
+from pydantic import BaseModel
 
 # --- LOGGING CONFIGURATION ---
 logging.basicConfig(
@@ -230,59 +231,27 @@ def get_ga_page_metrics(start_date: str, end_date: str, page_path: str, website_
     
     try:
         logging.info(f"Fetching GA page metrics for path: {page_path}, property: {ga_property_id}")
-        
-        # Use pagePath as a dimension and query all rows
-        # GA4 will return data grouped by pagePath, we filter in the response
-        from google.analytics.data_v1beta.types import Filter, FilterExpression
-        
-        # Create a simple string filter for the page path
-        page_filter = FilterExpression(
-            filter=Filter(
-                field_name="pagePath",
-                string_filter={"value": page_path, "match_type": 1}  # 1 = EXACT
-            )
+        batch_results = get_ga_batch_metrics(
+            start_date,
+            end_date,
+            [page_path],
+            website_id=website_id,
+            property_id=ga_property_id,
         )
-        
-        request = RunReportRequest(
-            property=f"properties/{ga_property_id}",
-            date_ranges=[{"start_date": start_date, "end_date": end_date}],
-            dimensions=[
-                {"name": "pagePath"}  # Include pagePath as dimension
-            ],
-            metrics=[
-                {"name": "activeUsers"},
-                {"name": "screenPageViews"},
-                {"name": "averageSessionDuration"},
-            ],
-            dimension_filter=page_filter,
-        )
-        
-        response = ga_client.run_report(request)
-        logging.info(f"GA page metrics response: {len(response.rows)} rows for path {page_path}")
-        
-        if response.rows:
-            row = response.rows[0]
-            metrics = row.metric_values
-            result = {
-                "users": int(metrics[0].value),
-                "page_views": int(metrics[1].value),
-                "avg_duration": float(metrics[2].value),
-                "page_path": page_path,
-                "property_id": ga_property_id,
-                "website_id": website_id,
-            }
+        result = batch_results.get(page_path)
+        if result:
             logging.info(f"Page metrics fetched: {result}")
             return result
-        else:
-            logging.info(f"No GA data for page path: {page_path}")
-            return {
-                "users": 0,
-                "page_views": 0,
-                "avg_duration": 0,
-                "page_path": page_path,
-                "property_id": ga_property_id,
-                "website_id": website_id,
-            }
+
+        logging.info(f"No GA data for page path: {page_path}")
+        return {
+            "users": 0,
+            "page_views": 0,
+            "avg_duration": 0,
+            "page_path": page_path,
+            "property_id": ga_property_id,
+            "website_id": website_id,
+        }
     except Exception as e:
         logging.error(f"Error fetching page metrics for {page_path}: {str(e)}", exc_info=True)
         return {
@@ -291,6 +260,131 @@ def get_ga_page_metrics(start_date: str, end_date: str, page_path: str, website_
             "avg_duration": 0,
             "error": str(e)
         }
+
+
+def normalize_page_path(page_path: str) -> str:
+    if not page_path:
+        return "/"
+
+    parsed_path = urlparse(page_path).path if "://" in page_path else page_path
+    normalized = unquote(parsed_path).strip()
+
+    if not normalized:
+        return "/"
+
+    if not normalized.startswith("/"):
+        normalized = f"/{normalized}"
+
+    return normalized
+
+
+def generate_page_path_variants(page_path: str) -> list[str]:
+    normalized = normalize_page_path(page_path)
+    variants = [normalized]
+
+    if normalized != "/" and normalized.endswith("/"):
+        variants.append(normalized[:-1])
+    elif normalized != "/":
+        variants.append(f"{normalized}/")
+
+    deduped = []
+    for variant in variants:
+        if variant and variant not in deduped:
+            deduped.append(variant)
+    return deduped
+
+
+def resolve_ga_property_id(website_id: str = None, property_id: str = None) -> str | None:
+    if property_id:
+        return property_id
+    if website_id:
+        return GA_PROPERTIES_MAPPING.get(website_id)
+    if GA_PROPERTIES_MAPPING:
+        return GA_PROPERTIES_MAPPING.get("default") or list(GA_PROPERTIES_MAPPING.values())[0]
+    return None
+
+
+def get_ga_batch_metrics(start_date: str, end_date: str, page_paths: list[str], website_id: str = None, property_id: str = None) -> dict:
+    if not ga_client:
+        return {}
+
+    ga_property_id = resolve_ga_property_id(website_id=website_id, property_id=property_id)
+    if not ga_property_id:
+        return {}
+
+    path_lookup = {}
+    query_paths = []
+    for original_path in page_paths:
+        for variant in generate_page_path_variants(original_path):
+            path_lookup[variant] = normalize_page_path(original_path)
+            if variant not in query_paths:
+                query_paths.append(variant)
+
+    if not query_paths:
+        return {}
+
+    from google.analytics.data_v1beta.types import Filter, FilterExpression
+
+    page_filter = FilterExpression(
+        filter=Filter(
+            field_name="pagePath",
+            in_list_filter={"values": query_paths, "case_sensitive": False}
+        )
+    )
+
+    request = RunReportRequest(
+        property=f"properties/{ga_property_id}",
+        date_ranges=[{"start_date": start_date, "end_date": end_date}],
+        dimensions=[{"name": "pagePath"}],
+        metrics=[
+            {"name": "activeUsers"},
+            {"name": "screenPageViews"},
+            {"name": "averageSessionDuration"},
+        ],
+        dimension_filter=page_filter,
+    )
+
+    response = ga_client.run_report(request)
+    logging.info(f"GA batch metrics response: {len(response.rows)} rows for {len(query_paths)} requested paths")
+
+    results = {
+        normalize_page_path(page_path): {
+            "users": 0,
+            "page_views": 0,
+            "avg_duration": 0,
+            "page_path": normalize_page_path(page_path),
+            "property_id": ga_property_id,
+            "website_id": website_id,
+        }
+        for page_path in page_paths
+        if page_path
+    }
+
+    for row in response.rows:
+        matched_path = row.dimension_values[0].value
+        original_path = path_lookup.get(matched_path)
+        if not original_path:
+            continue
+
+        metrics = row.metric_values
+        results[original_path] = {
+            "users": int(metrics[0].value),
+            "page_views": int(metrics[1].value),
+            "avg_duration": float(metrics[2].value),
+            "page_path": original_path,
+            "matched_page_path": matched_path,
+            "property_id": ga_property_id,
+            "website_id": website_id,
+        }
+
+    return results
+
+
+class GABatchMetricsRequest(BaseModel):
+    page_paths: list[str]
+    website_id: str | None = None
+    start_date: str | None = None
+    end_date: str | None = None
 
 
 def authenticate(credentials: HTTPBasicCredentials = Depends(security)):
@@ -1000,6 +1094,52 @@ async def get_ga_page_metrics_endpoint(page_path: str, website_id: str = None, s
         logging.error(f"Error in GA page metrics endpoint: {str(e)}")
         return {
             "error": "Failed to fetch Google Analytics page metrics",
+            "detail": str(e)
+        }
+
+
+@app.post("/api/ga-batch-metrics")
+async def get_ga_batch_metrics_endpoint(payload: GABatchMetricsRequest):
+    """
+    Get Google Analytics metrics for multiple page paths in a single batch request.
+    This is more efficient than making individual requests for each page.
+    
+    Request body:
+    {
+        "page_paths": ["/article-1/", "/article-2/", ...],
+        "website_id": "easterneye.biz",
+        "start_date": "2026-04-01",
+        "end_date": "2026-04-20"
+    }
+    """
+    try:
+        page_paths = payload.page_paths
+        website_id = payload.website_id
+        start_date = payload.start_date
+        end_date = payload.end_date
+
+        if not end_date:
+            end_date = datetime.now().strftime('%Y-%m-%d')
+        if not start_date:
+            start_date = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+        
+        if not page_paths or not isinstance(page_paths, list):
+            return {
+                "error": "page_paths parameter must be a non-empty array"
+            }
+        
+        results = get_ga_batch_metrics(start_date, end_date, page_paths, website_id=website_id)
+        
+        return {
+            "start_date": start_date,
+            "end_date": end_date,
+            "website_id": website_id,
+            "metrics": results
+        }
+    except Exception as e:
+        logging.error(f"Error in GA batch metrics endpoint: {str(e)}")
+        return {
+            "error": "Failed to fetch Google Analytics batch metrics",
             "detail": str(e)
         }
 
