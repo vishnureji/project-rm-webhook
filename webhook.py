@@ -231,14 +231,15 @@ def get_ga_page_metrics(start_date: str, end_date: str, page_path: str, website_
     try:
         logging.info(f"Fetching GA page metrics for path: {page_path}, property: {ga_property_id}")
         
-        # Create proper filter for specific page path using StringFilter
-        from google.analytics.data_v1beta.types import FilterExpression, StringFilter
+        # Use pagePath as a dimension and query all rows
+        # GA4 will return data grouped by pagePath, we filter in the response
+        from google.analytics.data_v1beta.types import Filter, FilterExpression
         
+        # Create a simple string filter for the page path
         page_filter = FilterExpression(
-            filter=StringFilter(
+            filter=Filter(
                 field_name="pagePath",
-                value=page_path,
-                match_type=1  # EXACT match (0=UNSPECIFIED, 1=EXACT, 2=BEGINS_WITH, 3=ENDS_WITH, 4=CONTAINS, 5=FULL_REGEXP)
+                string_filter={"value": page_path, "match_type": 1}  # 1 = EXACT
             )
         )
         
@@ -246,7 +247,7 @@ def get_ga_page_metrics(start_date: str, end_date: str, page_path: str, website_
             property=f"properties/{ga_property_id}",
             date_ranges=[{"start_date": start_date, "end_date": end_date}],
             dimensions=[
-                {"name": "pagePath"}  # Include pagePath as dimension for filtering
+                {"name": "pagePath"}  # Include pagePath as dimension
             ],
             metrics=[
                 {"name": "activeUsers"},
