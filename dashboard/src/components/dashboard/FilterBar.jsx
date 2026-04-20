@@ -87,11 +87,10 @@ export default function FilterBar({
             ) : (
               <select
                 id="website-select"
-                value={selectedWebsite || 'all'}
-                onChange={(e) => onWebsiteChange(e.target.value === 'all' ? null : e.target.value)}
+                value={selectedWebsite || ''}
+                onChange={(e) => onWebsiteChange(e.target.value)}
                 disabled={isLoading}
               >
-                <option value="all">All Websites</option>
                 {(websites || []).map((website) => (
                   <option key={website.website_id} value={website.website_id}>
                     {website.website_name}
@@ -153,7 +152,6 @@ export default function FilterBar({
           {selectedWebsiteInfo ? (
             <div className="selected-website-meta">
               <Badge variant="primary">{selectedWebsiteInfo.website_name}</Badge>
-              <span>{selectedWebsiteInfo.post_count} posts</span>
               <span>{selectedWebsiteInfo.author_count} authors</span>
             </div>
           ) : (

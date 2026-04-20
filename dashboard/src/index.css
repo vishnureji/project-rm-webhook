@@ -165,6 +165,13 @@ body {
   gap: 12px;
 }
 
+.filter-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
 .selected-website-meta {
   display: flex;
   gap: 8px;
@@ -414,6 +421,23 @@ body {
   padding: 8px 10px;
   font-size: 0.82rem;
   cursor: pointer;
+}
+
+.article-search-input {
+  min-width: 240px;
+  height: 36px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.9rem;
+  padding: 0 12px;
+}
+
+.article-search-input:focus {
+  outline: none;
+  border-color: var(--brand-600);
+  box-shadow: 0 0 0 3px rgba(31, 115, 230, 0.15);
 }
 
 .clear-filter:disabled {

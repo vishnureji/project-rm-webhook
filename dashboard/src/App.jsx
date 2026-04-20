@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
 import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from './components/ui/table'
 import Badge from './components/ui/badge'
+import Button from './components/ui/button'
 import StateBlock from './components/ui/state-block'
 import KpiCard from './components/dashboard/KpiCard'
 import GoogleAnalyticsCard from './components/dashboard/GoogleAnalyticsCard'
@@ -20,7 +21,7 @@ import {
   getTopAuthors,
   getRecentArticles,
   getWebsites,
-  getGAComparison,
+  getGAMetrics,
   getGABatchMetrics,
 } from './api'
 
@@ -96,27 +97,45 @@ function dateToString(date) {
   return `${year}-${month}-${day}`
 }
 
+function getInitialFilters() {
+  const today = new Date()
+  const params = new URLSearchParams(window.location.search)
+
+  return {
+    websiteId: params.get('website_id'),
+    dateRange: {
+      preset: params.get('preset') || 'today',
+      startDate: params.get('start_date') || dateToString(today),
+      endDate: params.get('end_date') || dateToString(today),
+    },
+    articleSearch: params.get('article') || '',
+  }
+}
+
 function App() {
+  const initialFilters = useMemo(() => getInitialFilters(), [])
   const [selectedWebsite, setSelectedWebsite] = useState(null)
   const [selectedAuthor, setSelectedAuthor] = useState(null)
   const [websites, setWebsites] = useState(null)
-  const today = new Date()
   const [dateRange, setDateRange] = useState({
-    preset: 'today',
-    startDate: dateToString(today),
-    endDate: dateToString(today),
+    preset: initialFilters.dateRange.preset,
+    startDate: initialFilters.dateRange.startDate,
+    endDate: initialFilters.dateRange.endDate,
   })
+  const [articleSearch, setArticleSearch] = useState(initialFilters.articleSearch)
   const [stats, setStats] = useState(null)
   const [previousStats, setPreviousStats] = useState(null)
   const [postsPerDay, setPostsPerDay] = useState(null)
   const [topAuthors, setTopAuthors] = useState(null)
   const [recentArticles, setRecentArticles] = useState(null)
   const [gaMetrics, setGaMetrics] = useState(null)
-  const [previousGaMetrics, setPreviousGaMetrics] = useState(null)
   const [articleGaMetrics, setArticleGaMetrics] = useState({})
   const [currentPage, setCurrentPage] = useState(1)
+  const [shareMessage, setShareMessage] = useState('')
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const latestStatsRef = useRef(null)
   const latestRequestIdRef = useRef(0)
+  const hasLoadedOnceRef = useRef(false)
   const [loading, setLoading] = useState({
     websites: true,
     stats: true,
@@ -135,10 +154,12 @@ function App() {
         const data = await getWebsites()
         setWebsites(data)
         setLoading((prev) => ({ ...prev, websites: false }))
-        // Auto-select first website (by ID string, not the full object)
         if (data && data.length > 0) {
-          setSelectedWebsite(data[0].website_id)
-          console.log('Auto-selected first website:', data[0].website_id)
+          const requestedWebsiteId = initialFilters.websiteId
+          const defaultWebsiteId = data.some((website) => website.website_id === requestedWebsiteId)
+            ? requestedWebsiteId
+            : data[0].website_id
+          setSelectedWebsite(defaultWebsiteId)
         }
       } catch (err) {
         console.error('Error loading websites:', err)
@@ -150,7 +171,7 @@ function App() {
   }, [])
 
   // Load dashboard data when website or date range changes
-  const loadDashboardData = useCallback(async () => {
+  const loadDashboardData = useCallback(async ({ background = false } = {}) => {
     if (!selectedWebsite) return
 
     const requestId = latestRequestIdRef.current + 1
@@ -158,23 +179,29 @@ function App() {
 
     try {
       setError(null)
-      setArticleGaMetrics({})
-      setLoading((prev) => ({
-        ...prev,
-        stats: true,
-        postsPerDay: true,
-        topAuthors: true,
-        recentArticles: true,
-        gaMetrics: true,
-        articleMetrics: true,
-      }))
+      const shouldShowLoading = !background || !hasLoadedOnceRef.current
+      if (background) {
+        setIsRefreshing(true)
+      }
+      if (shouldShowLoading) {
+        setArticleGaMetrics({})
+        setLoading((prev) => ({
+          ...prev,
+          stats: true,
+          postsPerDay: true,
+          topAuthors: true,
+          recentArticles: true,
+          gaMetrics: true,
+          articleMetrics: true,
+        }))
+      }
 
       const [statsData, postsData, authorsData, articlesData, gaData] = await Promise.all([
         getStats(selectedWebsite, dateRange.startDate, dateRange.endDate),
         getPostsPerDay(selectedWebsite, dateRange.startDate, dateRange.endDate),
         getTopAuthors(selectedWebsite, dateRange.startDate, dateRange.endDate),
         getRecentArticles(50, selectedWebsite, dateRange.startDate, dateRange.endDate),
-        getGAComparison(dateRange.startDate, dateRange.endDate, true, selectedWebsite).catch((err) => {
+        getGAMetrics(dateRange.startDate, dateRange.endDate, selectedWebsite).catch((err) => {
           console.error('Error loading GA metrics:', err)
           return null
         }),
@@ -187,27 +214,18 @@ function App() {
       setPreviousStats(latestStatsRef.current)
       latestStatsRef.current = statsData
       setStats(statsData)
-      setLoading((prev) => ({ ...prev, stats: false }))
 
       setPostsPerDay(postsData)
-      setLoading((prev) => ({ ...prev, postsPerDay: false }))
 
       setTopAuthors(authorsData)
-      setLoading((prev) => ({ ...prev, topAuthors: false }))
 
       setRecentArticles(articlesData)
-      setLoading((prev) => ({ ...prev, recentArticles: false }))
 
-      if (gaData && gaData.current && gaData.current.metrics) {
-        console.log('GA metrics loaded:', gaData.current.metrics)
-        setGaMetrics(gaData.current.metrics)
-        setPreviousGaMetrics(gaData.previous?.metrics ?? null)
+      if (gaData && gaData.metrics) {
+        setGaMetrics(gaData.metrics)
       } else {
-        console.warn('No GA metrics data')
         setGaMetrics(null)
-        setPreviousGaMetrics(null)
       }
-      setLoading((prev) => ({ ...prev, gaMetrics: false }))
 
       const articlePagePaths = [...new Set((articlesData || []).map((article) => extractPagePath(article.post_url)).filter(Boolean))]
 
@@ -233,7 +251,16 @@ function App() {
       } else {
         setArticleGaMetrics({})
       }
-      setLoading((prev) => ({ ...prev, articleMetrics: false }))
+      hasLoadedOnceRef.current = true
+      setLoading((prev) => ({
+        ...prev,
+        stats: false,
+        postsPerDay: false,
+        topAuthors: false,
+        recentArticles: false,
+        gaMetrics: false,
+        articleMetrics: false,
+      }))
     } catch (err) {
       if (latestRequestIdRef.current !== requestId) {
         return
@@ -249,14 +276,32 @@ function App() {
         gaMetrics: false,
         articleMetrics: false,
       })
+    } finally {
+      if (latestRequestIdRef.current === requestId) {
+        setIsRefreshing(false)
+      }
     }
   }, [selectedWebsite, dateRange])
 
   useEffect(() => {
     loadDashboardData()
-    const interval = setInterval(loadDashboardData, 30000)
+    const interval = setInterval(() => loadDashboardData({ background: true }), 30000)
     return () => clearInterval(interval)
   }, [loadDashboardData])
+
+  useEffect(() => {
+    if (!selectedWebsite) return
+
+    const params = new URLSearchParams()
+    params.set('website_id', selectedWebsite)
+    params.set('preset', dateRange.preset || 'custom')
+    if (dateRange.startDate) params.set('start_date', dateRange.startDate)
+    if (dateRange.endDate) params.set('end_date', dateRange.endDate)
+    if (articleSearch.trim()) params.set('article', articleSearch.trim())
+
+    const nextUrl = `${window.location.pathname}?${params.toString()}`
+    window.history.replaceState({}, '', nextUrl)
+  }, [selectedWebsite, dateRange, articleSearch])
 
   const articleTrend = useMemo(() => {
     if (!previousStats?.total_articles || !stats?.total_articles) return null
@@ -277,9 +322,12 @@ function App() {
   )
 
   const filteredArticles = useMemo(() => {
-    if (!selectedAuthor) return recentArticles || []
-    return (recentArticles || []).filter((article) => article.author === selectedAuthor.name)
-  }, [selectedAuthor, recentArticles])
+    return (recentArticles || []).filter((article) => {
+      const matchesAuthor = !selectedAuthor || article.author === selectedAuthor.name
+      const matchesSearch = !articleSearch.trim() || (article.headline || '').toLowerCase().includes(articleSearch.trim().toLowerCase())
+      return matchesAuthor && matchesSearch
+    })
+  }, [selectedAuthor, recentArticles, articleSearch])
 
   const totalPages = Math.max(1, Math.ceil(filteredArticles.length / ARTICLES_PER_PAGE))
   const paginatedArticles = useMemo(() => {
@@ -289,13 +337,24 @@ function App() {
 
   useEffect(() => {
     setCurrentPage(1)
-  }, [selectedAuthor, selectedWebsite, dateRange.startDate, dateRange.endDate])
+  }, [selectedAuthor, selectedWebsite, dateRange.startDate, dateRange.endDate, articleSearch])
 
   useEffect(() => {
     if (currentPage > totalPages) {
       setCurrentPage(totalPages)
     }
   }, [currentPage, totalPages])
+
+  const handleCopyShareLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href)
+      setShareMessage('Link copied')
+      setTimeout(() => setShareMessage(''), 2500)
+    } catch {
+      setShareMessage('Copy failed')
+      setTimeout(() => setShareMessage(''), 2500)
+    }
+  }
 
   return (
     <div className="dashboard-app">
@@ -306,7 +365,7 @@ function App() {
           <p className="subtitle">Scan insights, compare platforms, and evaluate author productivity in one workspace.</p>
         </div>
         <div className="refresh-note">
-          <RefreshCw size={14} /> Auto-refresh every 30 seconds
+          <RefreshCw size={14} className={isRefreshing ? 'spin' : ''} /> Auto-refresh every 30 seconds
         </div>
       </header>
 
@@ -318,13 +377,19 @@ function App() {
         onDateRangeChange={setDateRange}
         isLoading={loading.websites}
         rightSlot={
-          <ExportActionBar
-            websites={websites}
-            selectedWebsite={selectedWebsite}
-            dateRange={dateRange}
-            compact
-            error={error}
-          />
+          <div className="filter-actions">
+            <Button variant="outline" size="sm" onClick={handleCopyShareLink}>
+              Share View
+            </Button>
+            {shareMessage ? <Badge variant={shareMessage === 'Link copied' ? 'success' : 'danger'}>{shareMessage}</Badge> : null}
+            <ExportActionBar
+              websites={websites}
+              selectedWebsite={selectedWebsite}
+              dateRange={dateRange}
+              compact
+              error={error}
+            />
+          </div>
         }
       />
 
@@ -454,11 +519,20 @@ function App() {
         title="Recent Content"
         description="Structured list for quick scanning across title, author, platform, and performance signal."
         action={
-          selectedAuthor ? (
-            <button className="clear-filter" onClick={() => setSelectedAuthor(null)}>
-              Clear author filter ({selectedAuthor.name})
-            </button>
-          ) : null
+          <>
+            <input
+              type="search"
+              className="article-search-input"
+              placeholder="Search by article name"
+              value={articleSearch}
+              onChange={(event) => setArticleSearch(event.target.value)}
+            />
+            {selectedAuthor ? (
+              <button className="clear-filter" onClick={() => setSelectedAuthor(null)}>
+                Clear author filter ({selectedAuthor.name})
+              </button>
+            ) : null}
+          </>
         }
       >
         <div className="recent-content-card">
