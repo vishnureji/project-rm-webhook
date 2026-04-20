@@ -739,16 +739,6 @@ async def get_recent_articles(limit: int = 20, website_id: str = None, start_dat
             conn.close()
 
 
-# Mount static files from dashboard build directory
-dashboard_dist = Path(__file__).parent / "dashboard" / "dist"
-if dashboard_dist.exists():
-    app.mount("/", StaticFiles(directory=str(dashboard_dist), html=True), name="static")
-else:
-    logging.warning(f"Dashboard dist not found at {dashboard_dist}")
-
-
-
-
 @app.get("/api/ga-metrics")
 async def get_ga_metrics_endpoint(website_id: str = None, start_date: str = None, end_date: str = None):
     """Get Google Analytics metrics for a specific website or all websites"""
@@ -855,6 +845,13 @@ async def get_ga_properties():
             "error": str(e)
         }
 
+
+# Mount static files from dashboard build directory (MUST be last - after all API routes)
+dashboard_dist = Path(__file__).parent / "dashboard" / "dist"
+if dashboard_dist.exists():
+    app.mount("/", StaticFiles(directory=str(dashboard_dist), html=True), name="static")
+else:
+    logging.warning(f"Dashboard dist not found at {dashboard_dist}")
 
 
 if __name__ == "__main__":
