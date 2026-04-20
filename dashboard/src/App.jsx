@@ -118,10 +118,10 @@ function App() {
         const data = await getWebsites()
         setWebsites(data)
         setLoading((prev) => ({ ...prev, websites: false }))
-        // Auto-select first website
+        // Auto-select first website (by ID string, not the full object)
         if (data && data.length > 0) {
-          setSelectedWebsite(data[0])
-          console.log('Auto-selected first website:', data[0])
+          setSelectedWebsite(data[0].website_id)
+          console.log('Auto-selected first website:', data[0].website_id)
         }
       } catch (err) {
         console.error('Error loading websites:', err)
