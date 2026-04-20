@@ -105,6 +105,7 @@ function App() {
   const [previousGaMetrics, setPreviousGaMetrics] = useState(null)
   const [articleGaMetrics, setArticleGaMetrics] = useState({})
   const latestStatsRef = useRef(null)
+  const latestRequestIdRef = useRef(0)
   const [loading, setLoading] = useState({
     websites: true,
     stats: true,
@@ -141,8 +142,12 @@ function App() {
   const loadDashboardData = useCallback(async () => {
     if (!selectedWebsite) return
 
+    const requestId = latestRequestIdRef.current + 1
+    latestRequestIdRef.current = requestId
+
     try {
       setError(null)
+      setArticleGaMetrics({})
       setLoading((prev) => ({
         ...prev,
         stats: true,
@@ -163,6 +168,10 @@ function App() {
           return null
         }),
       ])
+
+      if (latestRequestIdRef.current !== requestId) {
+        return
+      }
 
       setPreviousStats(latestStatsRef.current)
       latestStatsRef.current = statsData
@@ -199,8 +208,14 @@ function App() {
             dateRange.startDate,
             dateRange.endDate
           )
+          if (latestRequestIdRef.current !== requestId) {
+            return
+          }
           setArticleGaMetrics(batchData?.metrics || {})
         } catch (batchError) {
+          if (latestRequestIdRef.current !== requestId) {
+            return
+          }
           console.error('Error loading article GA metrics:', batchError)
           setArticleGaMetrics({})
         }
@@ -209,6 +224,9 @@ function App() {
       }
       setLoading((prev) => ({ ...prev, articleMetrics: false }))
     } catch (err) {
+      if (latestRequestIdRef.current !== requestId) {
+        return
+      }
       console.error('Error loading dashboard data:', err)
       setError('Failed to load dashboard data')
       setArticleGaMetrics({})
