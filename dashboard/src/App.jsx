@@ -138,16 +138,26 @@ function App() {
       setRecentArticles(articlesData)
       setLoading((prev) => ({ ...prev, recentArticles: false }))
 
-      // Fetch Google Analytics metrics
-      try {
-        const gaData = await getGAComparison(dateRange.startDate, dateRange.endDate, true, selectedWebsite)
-        if (gaData.current) {
-          setPreviousGaMetrics(gaMetrics)
-          setGaMetrics(gaData.current.metrics)
+      // Fetch Google Analytics metrics (only if website is selected)
+      if (selectedWebsite) {
+        try {
+          console.log('Fetching GA metrics for website:', selectedWebsite)
+          const gaData = await getGAComparison(dateRange.startDate, dateRange.endDate, true, selectedWebsite)
+          console.log('GA data received:', gaData)
+          if (gaData.current && gaData.current.metrics) {
+            setGaMetrics(gaData.current.metrics)
+          } else if (gaData.error) {
+            console.warn('GA API returned error:', gaData.error)
+            setGaMetrics(null)
+          }
+          setLoading((prev) => ({ ...prev, gaMetrics: false }))
+        } catch (gaError) {
+          console.error('Error loading GA metrics:', gaError)
+          setGaMetrics(null)
+          setLoading((prev) => ({ ...prev, gaMetrics: false }))
         }
-        setLoading((prev) => ({ ...prev, gaMetrics: false }))
-      } catch (gaError) {
-        console.error('Error loading GA metrics:', gaError)
+      } else {
+        setGaMetrics(null)
         setLoading((prev) => ({ ...prev, gaMetrics: false }))
       }
     } catch (err) {
@@ -162,13 +172,21 @@ function App() {
         gaMetrics: false,
       })
     }
-  }, [selectedWebsite, dateRange, websites, stats, gaMetrics])
+  }, [selectedWebsite, dateRange, websites, stats])
 
   useEffect(() => {
     loadDashboardData()
     const interval = setInterval(loadDashboardData, 30000)
     return () => clearInterval(interval)
   }, [loadDashboardData])
+
+  // Auto-select first website when websites are loaded
+  useEffect(() => {
+    if (websites && websites.length > 0 && !selectedWebsite) {
+      setSelectedWebsite(websites[0])
+      console.log('Auto-selected first website:', websites[0])
+    }
+  }, [websites, selectedWebsite])
 
   const articleTrend = useMemo(() => {
     if (!previousStats?.total_articles || !stats?.total_articles) return null
