@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
 import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from './components/ui/table'
 import Badge from './components/ui/badge'
@@ -21,7 +21,7 @@ import {
   getRecentArticles,
   getWebsites,
   getGAComparison,
-  getGAProperties,
+  getGABatchMetrics,
 } from './api'
 
 function formatRelativeTrend(value) {
@@ -78,11 +78,13 @@ function computePlatformComparison(articles) {
     .sort((a, b) => b.posts - a.posts)
 }
 
-function getArticlePerformanceLabel(article, topAuthors) {
-  const authorPostCount = topAuthors?.find((author) => author.name === article.author)?.post_count ?? 0
-  if (authorPostCount >= 10) return 'High'
-  if (authorPostCount >= 4) return 'Medium'
-  return 'Low'
+function extractPagePath(url) {
+  if (!url) return null
+  try {
+    return new URL(url).pathname
+  } catch {
+    return null
+  }
 }
 
 function App() {
@@ -101,6 +103,8 @@ function App() {
   const [recentArticles, setRecentArticles] = useState(null)
   const [gaMetrics, setGaMetrics] = useState(null)
   const [previousGaMetrics, setPreviousGaMetrics] = useState(null)
+  const [articleGaMetrics, setArticleGaMetrics] = useState({})
+  const latestStatsRef = useRef(null)
   const [loading, setLoading] = useState({
     websites: true,
     stats: true,
@@ -108,6 +112,7 @@ function App() {
     topAuthors: true,
     recentArticles: true,
     gaMetrics: true,
+    articleMetrics: true,
   })
   const [error, setError] = useState(null)
 
@@ -138,8 +143,16 @@ function App() {
 
     try {
       setError(null)
+      setLoading((prev) => ({
+        ...prev,
+        stats: true,
+        postsPerDay: true,
+        topAuthors: true,
+        recentArticles: true,
+        gaMetrics: true,
+        articleMetrics: true,
+      }))
 
-      // Load all data in parallel
       const [statsData, postsData, authorsData, articlesData, gaData] = await Promise.all([
         getStats(selectedWebsite, dateRange.startDate, dateRange.endDate),
         getPostsPerDay(selectedWebsite, dateRange.startDate, dateRange.endDate),
@@ -151,6 +164,8 @@ function App() {
         }),
       ])
 
+      setPreviousStats(latestStatsRef.current)
+      latestStatsRef.current = statsData
       setStats(statsData)
       setLoading((prev) => ({ ...prev, stats: false }))
 
@@ -163,24 +178,47 @@ function App() {
       setRecentArticles(articlesData)
       setLoading((prev) => ({ ...prev, recentArticles: false }))
 
-      // Handle GA metrics
       if (gaData && gaData.current && gaData.current.metrics) {
         console.log('GA metrics loaded:', gaData.current.metrics)
         setGaMetrics(gaData.current.metrics)
+        setPreviousGaMetrics(gaData.previous?.metrics ?? null)
       } else {
         console.warn('No GA metrics data')
         setGaMetrics(null)
+        setPreviousGaMetrics(null)
       }
       setLoading((prev) => ({ ...prev, gaMetrics: false }))
+
+      const articlePagePaths = [...new Set((articlesData || []).map((article) => extractPagePath(article.post_url)).filter(Boolean))]
+
+      if (articlePagePaths.length > 0) {
+        try {
+          const batchData = await getGABatchMetrics(
+            articlePagePaths,
+            selectedWebsite,
+            dateRange.startDate,
+            dateRange.endDate
+          )
+          setArticleGaMetrics(batchData?.metrics || {})
+        } catch (batchError) {
+          console.error('Error loading article GA metrics:', batchError)
+          setArticleGaMetrics({})
+        }
+      } else {
+        setArticleGaMetrics({})
+      }
+      setLoading((prev) => ({ ...prev, articleMetrics: false }))
     } catch (err) {
       console.error('Error loading dashboard data:', err)
       setError('Failed to load dashboard data')
+      setArticleGaMetrics({})
       setLoading({
         stats: false,
         postsPerDay: false,
         topAuthors: false,
         recentArticles: false,
         gaMetrics: false,
+        articleMetrics: false,
       })
     }
   }, [selectedWebsite, dateRange])
@@ -420,9 +458,8 @@ function App() {
                     <ArticleRow
                       key={article.post_id}
                       article={article}
-                      websiteId={selectedWebsite}
-                      startDate={dateRange.startDate}
-                      endDate={dateRange.endDate}
+                      pageMetrics={articleGaMetrics[extractPagePath(article.post_url)]}
+                      isLoading={loading.articleMetrics}
                     />
                   ))}
                 </TableBody>

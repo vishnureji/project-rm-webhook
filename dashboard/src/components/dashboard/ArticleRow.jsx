@@ -1,7 +1,6 @@
-import React, { useEffect, useState, useMemo } from 'react'
+import React from 'react'
 import { ExternalLink, Users, Eye, Clock } from 'lucide-react'
 import { TableCell, TableRow } from '../ui/table'
-import { getGAPageMetrics } from '../../api'
 
 function formatDate(timestamp) {
   if (!timestamp) return 'N/A'
@@ -18,7 +17,7 @@ function formatDate(timestamp) {
 }
 
 function formatDuration(seconds) {
-  if (!seconds) return 'N/A'
+  if (seconds === null || seconds === undefined) return 'N/A'
   try {
     if (seconds < 60) {
       return `${Math.round(seconds)}s`
@@ -31,54 +30,7 @@ function formatDuration(seconds) {
   }
 }
 
-function extractPagePath(url) {
-  // Extract path from full URL (e.g., 'https://example.com/article' -> '/article')
-  if (!url) return null
-  try {
-    const urlObj = new URL(url)
-    return urlObj.pathname
-  } catch {
-    return null
-  }
-}
-
-function ArticleRowComponent({ article, websiteId, startDate, endDate }) {
-  const [pageMetrics, setPageMetrics] = useState(null)
-  const [isLoading, setIsLoading] = useState(false)
-  
-  // Memoize the page path to prevent recalculation
-  const pagePath = useMemo(() => {
-    if (!article?.post_url) return null
-    return extractPagePath(article.post_url)
-  }, [article?.post_url])
-  
-  // Fetch page-specific GA metrics when component mounts or dates change
-  useEffect(() => {
-    if (!pagePath || !websiteId) {
-      setPageMetrics(null)
-      return
-    }
-    
-    const loadPageMetrics = async () => {
-      try {
-        setIsLoading(true)
-        const response = await getGAPageMetrics(pagePath, websiteId, startDate, endDate)
-        
-        if (response.metrics && !response.metrics.error) {
-          setPageMetrics(response.metrics)
-        } else {
-          setPageMetrics(null)
-        }
-      } catch (err) {
-        setPageMetrics(null)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-    
-    loadPageMetrics()
-  }, [pagePath, websiteId, startDate, endDate])
-
+function ArticleRowComponent({ article, pageMetrics = null, isLoading = false }) {
   return (
     <TableRow>
       <TableCell>
@@ -89,12 +41,11 @@ function ArticleRowComponent({ article, websiteId, startDate, endDate }) {
       <TableCell>{article.author || 'Unknown'}</TableCell>
       <TableCell>{article.website_name || 'N/A'}</TableCell>
       <TableCell>{formatDate(article.created_ts)}</TableCell>
-      {/* Google Analytics Metrics - Page Specific */}
       <TableCell>
         <div className="ga-metric-cell">
           <Users size={14} className="ga-icon users" />
           <span className="ga-value">
-            {isLoading ? '...' : (pageMetrics?.users ? pageMetrics.users.toLocaleString() : '—')}
+            {isLoading ? '...' : pageMetrics?.users !== undefined ? pageMetrics.users.toLocaleString() : '—'}
           </span>
         </div>
       </TableCell>
@@ -102,7 +53,7 @@ function ArticleRowComponent({ article, websiteId, startDate, endDate }) {
         <div className="ga-metric-cell">
           <Eye size={14} className="ga-icon pageviews" />
           <span className="ga-value">
-            {isLoading ? '...' : (pageMetrics?.page_views ? pageMetrics.page_views.toLocaleString() : '—')}
+            {isLoading ? '...' : pageMetrics?.page_views !== undefined ? pageMetrics.page_views.toLocaleString() : '—'}
           </span>
         </div>
       </TableCell>
@@ -110,7 +61,7 @@ function ArticleRowComponent({ article, websiteId, startDate, endDate }) {
         <div className="ga-metric-cell">
           <Clock size={14} className="ga-icon duration" />
           <span className="ga-value">
-            {isLoading ? '...' : (pageMetrics?.avg_duration ? formatDuration(pageMetrics.avg_duration) : '—')}
+            {isLoading ? '...' : pageMetrics?.avg_duration !== undefined ? formatDuration(pageMetrics.avg_duration) : '—'}
           </span>
         </div>
       </TableCell>
@@ -161,4 +112,3 @@ function ArticleRowComponent({ article, websiteId, startDate, endDate }) {
 }
 
 export default React.memo(ArticleRowComponent)
-

@@ -1,10 +1,19 @@
 import React, { useEffect, useState } from 'react'
 import { Download, Loader2 } from 'lucide-react'
-import { getPostsPerDay, getRecentArticles, getTopAuthors } from '../../api'
-import { exportToCSV, getArticlesCSVData, getAuthorsCSVData, getPostsPerDayCSVData } from '../../utils/csvExport'
+import { getGABatchMetrics, getPostsPerDay, getRecentArticles, getTopAuthors } from '../../api'
+import { exportToCSV, getArticlesCSVDataWithGAMetrics, getAuthorsCSVData, getPostsPerDayCSVData } from '../../utils/csvExport'
 import Button from '../ui/button'
 import Badge from '../ui/badge'
 import StateBlock from '../ui/state-block'
+
+function extractPagePath(url) {
+  if (!url) return null
+  try {
+    return new URL(url).pathname
+  } catch {
+    return null
+  }
+}
 
 export default function ExportActionBar({ websites, selectedWebsite, dateRange, compact = false, error }) {
   const [reportType, setReportType] = useState('articles')
@@ -49,13 +58,24 @@ export default function ExportActionBar({ websites, selectedWebsite, dateRange, 
 
       if (reportType === 'articles') {
         const articles = await getRecentArticles(1000, selectedWebsite, dateRange.startDate, dateRange.endDate)
-        exportToCSV(getArticlesCSVData(articles), `articles-report-${timestamp}`, [
+        const pagePaths = [...new Set(articles.map((article) => extractPagePath(article.post_url)).filter(Boolean))]
+        let metricsByPath = {}
+
+        if (pagePaths.length > 0) {
+          const batchData = await getGABatchMetrics(pagePaths, selectedWebsite, dateRange.startDate, dateRange.endDate)
+          metricsByPath = batchData?.metrics || {}
+        }
+
+        exportToCSV(getArticlesCSVDataWithGAMetrics(articles, metricsByPath), `articles-report-${timestamp}`, [
           'Post ID',
           'Headline',
           'URL',
           'Author',
           'Date',
           'Website',
+          'GA Unique Visitors',
+          'GA Page Views',
+          'GA Avg Duration',
         ])
       }
 
