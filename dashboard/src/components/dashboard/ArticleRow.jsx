@@ -1,6 +1,5 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useMemo } from 'react'
 import { ExternalLink, Users, Eye, Clock } from 'lucide-react'
-import Badge from '../ui/badge'
 import { TableCell, TableRow } from '../ui/table'
 import { getGAPageMetrics } from '../../api'
 
@@ -43,63 +42,42 @@ function extractPagePath(url) {
   }
 }
 
-export default function ArticleRow({ article, scoreLabel, websiteId, startDate, endDate }) {
-  const performanceVariant =
-    scoreLabel === 'High' ? 'success' : scoreLabel === 'Medium' ? 'warning' : 'neutral'
-  
+function ArticleRowComponent({ article, websiteId, startDate, endDate }) {
   const [pageMetrics, setPageMetrics] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState(null)
+  
+  // Memoize the page path to prevent recalculation
+  const pagePath = useMemo(() => {
+    if (!article?.post_url) return null
+    return extractPagePath(article.post_url)
+  }, [article?.post_url])
   
   // Fetch page-specific GA metrics when component mounts or dates change
   useEffect(() => {
-    if (!article?.post_url || !websiteId) {
-      console.log(`[${article?.headline}] Skipping GA: post_url=${!!article?.post_url}, websiteId=${websiteId}`)
+    if (!pagePath || !websiteId) {
       setPageMetrics(null)
-      setError(null)
       return
     }
     
     const loadPageMetrics = async () => {
       try {
         setIsLoading(true)
-        const pagePath = extractPagePath(article.post_url)
-        
-        console.log(`[${article?.headline}] Article URL: ${article.post_url}`)
-        console.log(`[${article?.headline}] Extracted path: ${pagePath}`)
-        
-        if (!pagePath) {
-          console.warn(`[${article?.headline}] Failed to extract page path`)
-          setPageMetrics(null)
-          setError('No path')
-          return
-        }
-        
-        console.log(`[${article?.headline}] Fetching GA metrics: path=${pagePath}, website=${websiteId}, dates=${startDate}-${endDate}`)
         const response = await getGAPageMetrics(pagePath, websiteId, startDate, endDate)
         
-        console.log(`[${article?.headline}] GA response:`, response)
-        
         if (response.metrics && !response.metrics.error) {
-          console.log(`[${article?.headline}] Success: ${response.metrics.users} users, ${response.metrics.page_views} views`)
           setPageMetrics(response.metrics)
-          setError(null)
         } else {
-          console.error(`[${article?.headline}] GA error:`, response.metrics?.error || 'Unknown error')
           setPageMetrics(null)
-          setError(response.metrics?.error || 'No data')
         }
       } catch (err) {
-        console.error(`[${article?.headline}] Exception loading GA metrics:`, err)
         setPageMetrics(null)
-        setError(err.message)
       } finally {
         setIsLoading(false)
       }
     }
     
     loadPageMetrics()
-  }, [article?.post_url, article?.headline, websiteId, startDate, endDate])
+  }, [pagePath, websiteId, startDate, endDate])
 
   return (
     <TableRow>
@@ -111,9 +89,6 @@ export default function ArticleRow({ article, scoreLabel, websiteId, startDate, 
       <TableCell>{article.author || 'Unknown'}</TableCell>
       <TableCell>{article.website_name || 'N/A'}</TableCell>
       <TableCell>{formatDate(article.created_ts)}</TableCell>
-      <TableCell>
-        <Badge variant={performanceVariant}>{scoreLabel}</Badge>
-      </TableCell>
       {/* Google Analytics Metrics - Page Specific */}
       <TableCell>
         <div className="ga-metric-cell">
@@ -184,4 +159,6 @@ export default function ArticleRow({ article, scoreLabel, websiteId, startDate, 
     </TableRow>
   )
 }
+
+export default React.memo(ArticleRowComponent)
 

@@ -397,7 +397,6 @@ function App() {
                     <TableHeaderCell>Author</TableHeaderCell>
                     <TableHeaderCell>Platform</TableHeaderCell>
                     <TableHeaderCell>Date</TableHeaderCell>
-                    <TableHeaderCell>Performance</TableHeaderCell>
                     <TableHeaderCell>
                       <div className="ga-header-cell">
                         <span>Unique Visitors</span>
@@ -421,7 +420,6 @@ function App() {
                     <ArticleRow
                       key={article.post_id}
                       article={article}
-                      scoreLabel={getArticlePerformanceLabel(article, topAuthors || [])}
                       websiteId={selectedWebsite}
                       startDate={dateRange.startDate}
                       endDate={dateRange.endDate}
