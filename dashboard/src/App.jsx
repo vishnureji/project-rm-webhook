@@ -111,39 +111,44 @@ function App() {
   })
   const [error, setError] = useState(null)
 
+  // Load websites on initial mount
+  useEffect(() => {
+    const loadWebsites = async () => {
+      try {
+        const data = await getWebsites()
+        setWebsites(data)
+        setLoading((prev) => ({ ...prev, websites: false }))
+        // Auto-select first website
+        if (data && data.length > 0) {
+          setSelectedWebsite(data[0])
+          console.log('Auto-selected first website:', data[0])
+        }
+      } catch (err) {
+        console.error('Error loading websites:', err)
+        setLoading((prev) => ({ ...prev, websites: false }))
+        setError('Failed to load websites')
+      }
+    }
+    loadWebsites()
+  }, [])
+
+  // Load dashboard data when website or date range changes
   const loadDashboardData = useCallback(async () => {
+    if (!selectedWebsite) return
+
     try {
       setError(null)
 
-      // Load websites once
-      if (!websites || websites.length === 0) {
-        try {
-          const websitesData = await getWebsites()
-          setWebsites(websitesData)
-          setLoading((prev) => ({ ...prev, websites: false }))
-          // Auto-select first website
-          if (websitesData && websitesData.length > 0 && !selectedWebsite) {
-            setSelectedWebsite(websitesData[0])
-            console.log('Auto-selected first website:', websitesData[0])
-          }
-          return // Exit early to let auto-select trigger next load
-        } catch (err) {
-          console.error('Error loading websites:', err)
-          setLoading((prev) => ({ ...prev, websites: false }))
-        }
-      }
-
-      // If no website selected, can't continue
-      if (!selectedWebsite) {
-        return
-      }
-
-      // Load other data
-      const [statsData, postsData, authorsData, articlesData] = await Promise.all([
+      // Load all data in parallel
+      const [statsData, postsData, authorsData, articlesData, gaData] = await Promise.all([
         getStats(selectedWebsite, dateRange.startDate, dateRange.endDate),
         getPostsPerDay(selectedWebsite, dateRange.startDate, dateRange.endDate),
         getTopAuthors(selectedWebsite, dateRange.startDate, dateRange.endDate),
         getRecentArticles(50, selectedWebsite, dateRange.startDate, dateRange.endDate),
+        getGAComparison(dateRange.startDate, dateRange.endDate, true, selectedWebsite).catch((err) => {
+          console.error('Error loading GA metrics:', err)
+          return null
+        }),
       ])
 
       setStats(statsData)
@@ -158,28 +163,19 @@ function App() {
       setRecentArticles(articlesData)
       setLoading((prev) => ({ ...prev, recentArticles: false }))
 
-      // Fetch Google Analytics metrics
-      try {
-        console.log('Fetching GA metrics for website:', selectedWebsite)
-        const gaData = await getGAComparison(dateRange.startDate, dateRange.endDate, true, selectedWebsite)
-        console.log('GA data received:', gaData)
-        if (gaData && gaData.current && gaData.current.metrics) {
-          setGaMetrics(gaData.current.metrics)
-        } else {
-          console.warn('GA data missing or error:', gaData)
-          setGaMetrics(null)
-        }
-      } catch (gaError) {
-        console.error('Error loading GA metrics:', gaError)
+      // Handle GA metrics
+      if (gaData && gaData.current && gaData.current.metrics) {
+        console.log('GA metrics loaded:', gaData.current.metrics)
+        setGaMetrics(gaData.current.metrics)
+      } else {
+        console.warn('No GA metrics data')
         setGaMetrics(null)
-      } finally {
-        setLoading((prev) => ({ ...prev, gaMetrics: false }))
       }
+      setLoading((prev) => ({ ...prev, gaMetrics: false }))
     } catch (err) {
       console.error('Error loading dashboard data:', err)
-      setError('Failed to load dashboard data. Ensure the webhook server is running at http://localhost:8000')
+      setError('Failed to load dashboard data')
       setLoading({
-        websites: false,
         stats: false,
         postsPerDay: false,
         topAuthors: false,
@@ -187,7 +183,7 @@ function App() {
         gaMetrics: false,
       })
     }
-  }, [selectedWebsite, dateRange, websites])
+  }, [selectedWebsite, dateRange])
 
   useEffect(() => {
     loadDashboardData()
