@@ -377,6 +377,21 @@ function App() {
                     <TableHeaderCell>Platform</TableHeaderCell>
                     <TableHeaderCell>Date</TableHeaderCell>
                     <TableHeaderCell>Performance</TableHeaderCell>
+                    <TableHeaderCell>
+                      <div className="ga-header-cell">
+                        <span>Unique Visitors</span>
+                      </div>
+                    </TableHeaderCell>
+                    <TableHeaderCell>
+                      <div className="ga-header-cell">
+                        <span>Page Views</span>
+                      </div>
+                    </TableHeaderCell>
+                    <TableHeaderCell>
+                      <div className="ga-header-cell">
+                        <span>Avg Duration</span>
+                      </div>
+                    </TableHeaderCell>
                     <TableHeaderCell>Action</TableHeaderCell>
                   </TableRow>
                 </TableHead>
@@ -386,6 +401,7 @@ function App() {
                       key={article.post_id}
                       article={article}
                       scoreLabel={getArticlePerformanceLabel(article, topAuthors || [])}
+                      gaMetrics={gaMetrics}
                     />
                   ))}
                 </TableBody>
@@ -418,6 +434,19 @@ function App() {
           </TableBody>
         </Table>
       </footer>
+
+      <style>{`
+        .ga-header-cell {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          font-size: 12px;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          color: #6b7280;
+        }
+      `}</style>
     </div>
   )
 }
