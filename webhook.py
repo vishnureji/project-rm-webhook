@@ -1053,12 +1053,13 @@ async def get_ga_metrics_endpoint(website_id: str = None, start_date: str = None
 
 @app.get("/api/ga-comparison")
 async def get_ga_comparison(website_id: str = None, start_date: str = None, end_date: str = None, previous_period: bool = True):
-    """Get Google Analytics metrics with comparison to previous period for a specific website"""
+    """Get Google Analytics metrics with comparison to previous period for a specific website (all-time if no dates specified)"""
     try:
         if not end_date:
             end_date = datetime.now().strftime('%Y-%m-%d')
         if not start_date:
-            start_date = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+            # Use all-time data (GA API minimum is after 2015-08-13)
+            start_date = "2015-08-14"
         
         # Current period metrics
         current_metrics = get_ga_metrics(start_date, end_date, website_id=website_id)
@@ -1135,12 +1136,13 @@ async def get_ga_properties():
 
 @app.get("/api/ga-page-metrics")
 async def get_ga_page_metrics_endpoint(page_path: str, website_id: str = None, start_date: str = None, end_date: str = None):
-    """Get Google Analytics metrics for a specific page path"""
+    """Get Google Analytics metrics for a specific page path (all-time if no dates specified)"""
     try:
         if not end_date:
             end_date = datetime.now().strftime('%Y-%m-%d')
         if not start_date:
-            start_date = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+            # Use all-time data (GA API minimum is after 2015-08-13)
+            start_date = "2015-08-14"
         
         if not page_path:
             return {
@@ -1166,15 +1168,13 @@ async def get_ga_page_metrics_endpoint(page_path: str, website_id: str = None, s
 @app.post("/api/ga-batch-metrics")
 async def get_ga_batch_metrics_endpoint(payload: GABatchMetricsRequest):
     """
-    Get Google Analytics metrics for multiple page paths in a single batch request.
+    Get Google Analytics metrics for multiple page paths in a single batch request (all-time if no dates specified).
     This is more efficient than making individual requests for each page.
     
     Request body:
     {
         "page_paths": ["/article-1/", "/article-2/", ...],
-        "website_id": "easterneye.biz",
-        "start_date": "2026-04-01",
-        "end_date": "2026-04-20"
+        "website_id": "easterneye.biz"
     }
     """
     try:
@@ -1186,7 +1186,8 @@ async def get_ga_batch_metrics_endpoint(payload: GABatchMetricsRequest):
         if not end_date:
             end_date = datetime.now().strftime('%Y-%m-%d')
         if not start_date:
-            start_date = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+            # Use all-time data (GA API minimum is after 2015-08-13)
+            start_date = "2015-08-14"
         
         if not page_paths or not isinstance(page_paths, list):
             return {
