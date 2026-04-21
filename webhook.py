@@ -961,15 +961,80 @@ async def get_recent_articles(limit: int = 20, website_id: str = None, start_dat
             conn.close()
 
 
+@app.get("/api/all-platforms-articles")
+async def get_all_platforms_articles(limit: int = 1000):
+    """Get all articles across all platforms for platform comparison (no filters)"""
+    conn = None
+    cur = None
+    try:
+        conn = psycopg2.connect(DB_URL)
+        cur = conn.cursor()
+
+        params = [limit]
+        
+        query = f"""
+            SELECT DISTINCT ON (post_id)
+                post_id,
+                headline,
+                post_url,
+                created_ts,
+                displayed_name,
+                photo,
+                profile_url,
+                website_name
+            FROM (
+                SELECT 
+                    post_id,
+                    headline,
+                    post_url,
+                    created_ts,
+                    displayname as displayed_name,
+                    photo,
+                    profile_url,
+                    website_name
+                FROM articles_with_authors
+                WHERE author_id IS NOT NULL AND created_ts IS NOT NULL
+                ORDER BY post_id DESC, author_id DESC
+            ) all_posts
+            ORDER BY post_id DESC
+            LIMIT %s
+        """
+        
+        cur.execute(query, params)
+        rows = cur.fetchall()
+        return [
+            {
+                "post_id": row[0],
+                "headline": row[1],
+                "post_url": row[2],
+                "created_ts": row[3],
+                "author": row[4],
+                "photo": row[5],
+                "profile_url": row[6],
+                "website_name": row[7]
+            }
+            for row in rows
+        ]
+    except Exception as e:
+        logging.error(f"Error fetching all platforms articles: {str(e)}")
+        raise HTTPException(status_code=500, detail="Error fetching all platforms articles")
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
+
+
 @app.get("/api/ga-metrics")
 async def get_ga_metrics_endpoint(website_id: str = None, start_date: str = None, end_date: str = None):
-    """Get Google Analytics metrics for a specific website or all websites"""
+    """Get Google Analytics metrics for a specific website or all websites (all-time if no dates specified)"""
     try:
-        # Default to last 30 days if not specified
+        # Use all-time data (very large date range) if no dates specified
         if not end_date:
             end_date = datetime.now().strftime('%Y-%m-%d')
         if not start_date:
-            start_date = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+            # Use a very early start date to get all-time data
+            start_date = "2015-01-01"
         
         metrics = get_ga_metrics(start_date, end_date, website_id=website_id)
         return {

@@ -48,11 +48,15 @@ export const getRecentArticles = async (limit = 20, websiteId = null, startDate 
   return response.data
 }
 
+export const getAllPlatformsArticles = async (limit = 1000) => {
+  const params = { limit }
+  const response = await api.get(`/all-platforms-articles`, { params })
+  return response.data
+}
+
 // --- Google Analytics Metrics ---
-export const getGAMetrics = async (startDate = null, endDate = null, websiteId = null) => {
+export const getGAMetrics = async (websiteId = null) => {
   const params = {}
-  if (startDate) params.start_date = startDate
-  if (endDate) params.end_date = endDate
   if (websiteId) params.website_id = websiteId
   const response = await api.get('/ga-metrics', { params })
   return response.data
@@ -81,10 +85,8 @@ export const getGAPageMetrics = async (pagePath, websiteId = null, startDate = n
   return response.data
 }
 
-export const getGABatchMetrics = async (pagePaths, websiteId = null, startDate = null, endDate = null) => {
+export const getGABatchMetrics = async (pagePaths, websiteId = null) => {
   const payload = { page_paths: pagePaths }
-  if (startDate) payload.start_date = startDate
-  if (endDate) payload.end_date = endDate
   if (websiteId) payload.website_id = websiteId
   const response = await api.post('/ga-batch-metrics', payload)
   return response.data

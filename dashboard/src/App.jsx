@@ -23,6 +23,7 @@ import {
   getWebsites,
   getGAMetrics,
   getGABatchMetrics,
+  getAllPlatformsArticles,
 } from './api'
 
 const ARTICLES_PER_PAGE = 10
@@ -128,6 +129,7 @@ function App() {
   const [postsPerDay, setPostsPerDay] = useState(null)
   const [topAuthors, setTopAuthors] = useState(null)
   const [recentArticles, setRecentArticles] = useState(null)
+  const [allPlatformsArticles, setAllPlatformsArticles] = useState(null)
   const [gaMetrics, setGaMetrics] = useState(null)
   const [articleGaMetrics, setArticleGaMetrics] = useState({})
   const [currentPage, setCurrentPage] = useState(1)
@@ -142,6 +144,7 @@ function App() {
     postsPerDay: true,
     topAuthors: true,
     recentArticles: true,
+    allPlatforms: true,
     gaMetrics: true,
     articleMetrics: true,
   })
@@ -191,18 +194,23 @@ function App() {
           postsPerDay: true,
           topAuthors: true,
           recentArticles: true,
+          allPlatforms: true,
           gaMetrics: true,
           articleMetrics: true,
         }))
       }
 
-      const [statsData, postsData, authorsData, articlesData, gaData] = await Promise.all([
+      const [statsData, postsData, authorsData, articlesData, gaData, allPlatformsData] = await Promise.all([
         getStats(selectedWebsite, dateRange.startDate, dateRange.endDate),
         getPostsPerDay(selectedWebsite, dateRange.startDate, dateRange.endDate),
         getTopAuthors(selectedWebsite, dateRange.startDate, dateRange.endDate),
         getRecentArticles(50, selectedWebsite, dateRange.startDate, dateRange.endDate),
-        getGAMetrics(dateRange.startDate, dateRange.endDate, selectedWebsite).catch((err) => {
+        getGAMetrics(selectedWebsite).catch((err) => {
           console.error('Error loading GA metrics:', err)
+          return null
+        }),
+        getAllPlatformsArticles().catch((err) => {
+          console.error('Error loading all platforms articles:', err)
           return null
         }),
       ])
@@ -221,6 +229,8 @@ function App() {
 
       setRecentArticles(articlesData)
 
+      setAllPlatformsArticles(allPlatformsData)
+
       if (gaData && gaData.metrics) {
         setGaMetrics(gaData.metrics)
       } else {
@@ -233,9 +243,7 @@ function App() {
         try {
           const batchData = await getGABatchMetrics(
             articlePagePaths,
-            selectedWebsite,
-            dateRange.startDate,
-            dateRange.endDate
+            selectedWebsite
           )
           if (latestRequestIdRef.current !== requestId) {
             return
@@ -258,6 +266,7 @@ function App() {
         postsPerDay: false,
         topAuthors: false,
         recentArticles: false,
+        allPlatforms: false,
         gaMetrics: false,
         articleMetrics: false,
       }))
@@ -273,6 +282,7 @@ function App() {
         postsPerDay: false,
         topAuthors: false,
         recentArticles: false,
+        allPlatforms: false,
         gaMetrics: false,
         articleMetrics: false,
       })
@@ -315,7 +325,7 @@ function App() {
     return formatRelativeTrend(delta)
   }, [previousStats, stats])
 
-  const platformComparisonRows = useMemo(() => computePlatformComparison(recentArticles || []), [recentArticles])
+  const platformComparisonRows = useMemo(() => computePlatformComparison(allPlatformsArticles || []), [allPlatformsArticles])
   const totalAuthorPosts = useMemo(
     () => (topAuthors || []).reduce((sum, author) => sum + (author.post_count || 0), 0),
     [topAuthors]
@@ -456,7 +466,6 @@ function App() {
           metrics={gaMetrics}
           isLoading={loading.gaMetrics}
           error={gaMetrics?.error}
-          dateRange={dateRange}
         />
       </DashboardSection>
 
@@ -469,9 +478,9 @@ function App() {
 
           <AnalyticsChartCard
             title="Platform Comparison"
-            description="Cross-platform share and short-window momentum from recent publications."
-            isLoading={loading.recentArticles}
-            isEmpty={!loading.recentArticles && platformComparisonRows.length === 0}
+            description="All platforms across all time - shows distribution and momentum of publications."
+            isLoading={loading.allPlatforms}
+            isEmpty={!loading.allPlatforms && platformComparisonRows.length === 0}
             error={error}
           >
             <ComparisonTable rows={platformComparisonRows} isLoading={false} error={null} />
