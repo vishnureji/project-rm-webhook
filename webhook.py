@@ -1033,8 +1033,8 @@ async def get_ga_metrics_endpoint(website_id: str = None, start_date: str = None
         if not end_date:
             end_date = datetime.now().strftime('%Y-%m-%d')
         if not start_date:
-            # Use a very early start date to get all-time data (GA API minimum is 2015-08-13)
-            start_date = "2015-08-13"
+            # Use a very early start date to get all-time data (GA API minimum is after 2015-08-13)
+            start_date = "2015-08-14"
         
         metrics = get_ga_metrics(start_date, end_date, website_id=website_id)
         return {
